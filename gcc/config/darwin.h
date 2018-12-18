@@ -196,6 +196,14 @@ extern GTY(()) int darwin_ms_struct;
 #define DARWIN_NOCOMPACT_UNWIND \
 " %:version-compare(>= 10.6 mmacosx-version-min= -no_compact_unwind) "
 
+/* If we enabled default embedded rpaths, then add them.  */
+#ifdef USE_DEFAULT_RPATH
+#define DARWIN_DEFAULT_RPATH \
+"%{!r:%{!nostdlib:%{!rpath:%{!nodefaultrpath:%(darwin_rpaths)}}}} "
+#else
+#define DARWIN_DEFAULT_RPATH "%<nodefaultrpath "
+#endif
+
 /* In Darwin linker specs we can put -lcrt0.o and ld will search the library
    path for crt0.o or -lcrtx.a and it will search for for libcrtx.a.  As for
    other ports, we can also put xxx.{o,a}%s and get the appropriate complete
@@ -239,7 +247,7 @@ extern GTY(()) int darwin_ms_struct;
     DARWIN_NOPIE_SPEC \
     DARWIN_RDYNAMIC \
     DARWIN_NOCOMPACT_UNWIND \
-    "%{!r:%{!nostdlib:%{!rpath:%{!nodefaultrpath:%(darwin_rpaths)}}}} " \
+    DARWIN_DEFAULT_RPATH \
     "}}}}}}} %<pie %<no-pie %<rdynamic %<rpath "
 
 /* Spec that controls whether the debug linker is run automatically for
@@ -462,12 +470,15 @@ extern GTY(()) int darwin_ms_struct;
 "%{!static:%:version-compare(< 10.6 mmacosx-version-min= -lbundle1.o)	\
 	   %{fgnu-tm: -lcrttms.o}}"
 
-/* FIXME: it would be great to have a version-compare that accepts multiple
-   arguments.  */
+#ifdef USE_DEFAULT_RPATH
+/* Find dylibs in the same dir as the exe and in the compiler's lib dirs.  */
 #define DARWIN_RPATH_SPEC \
   "%:version-compare(>= 10.5 mmacosx-version-min= -rpath) \
    %:version-compare(>= 10.5 mmacosx-version-min= @loader_path) \
    %P "
+#else
+#define DARWIN_RPATH_SPEC ""
+#endif
 
 #ifdef HAVE_AS_MMACOSX_VERSION_MIN_OPTION
 /* Emit macosx version (but only major).  */
@@ -1110,10 +1121,14 @@ extern void darwin_driver_init (unsigned int *,struct cl_decoded_option **);
    needed, and there is no need for the compiler to emit them.  */
 #define MIN_LD64_OMIT_STUBS "62.1"
 
+/* If we have no definition for the linker version, pick the minimum version
+   that will bootstrap the compiler.  */
 #ifndef LD64_VERSION
-#define LD64_VERSION "62.1"
-#else
-#define DEF_LD64 LD64_VERSION
+# ifndef  DEF_LD64
+#  define LD64_VERSION "85.2.1"
+# else
+#  define LD64_VERSION DEF_LD64
+# endif
 #endif
 
 #endif /* CONFIG_DARWIN_H */
