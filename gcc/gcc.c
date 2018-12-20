@@ -5414,6 +5414,24 @@ do_spec_1 (const char *spec, int inswitch, const char *soft_matched_part)
 	    }
 	    break;
 
+	  case 'P':
+	    {
+	      struct spec_path_info info;
+
+	      info.option = "-rpath";
+	      info.append_len = 0;
+#ifdef RELATIVE_PREFIX_NOT_LINKDIR
+	      /* See comment above.  */
+	      info.omit_relative = true;
+#else
+	      info.omit_relative = false;
+#endif
+	      info.separate_options = true;
+
+	      for_each_path (&startfile_prefixes, true, 0, spec_path, &info);
+	    }
+	    break;
+
 	  case 'e':
 	    /* %efoo means report an error with `foo' as error message
 	       and don't execute any more commands for this file.  */
