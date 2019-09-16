@@ -2251,6 +2251,18 @@ darwin_should_restore_cfa_state (void)
   return generating_for_darwin_version <= 10;
 }
 
+/* Support for .cfi_xxxx personality and lsda symbols.  */
+rtx
+darwin_make_eh_symbol_indirect (rtx orig, bool ARG_UNUSED (pubvis))
+{
+  if (DARWIN_PPC == 0 && TARGET_64BIT)
+    return orig;
+
+  return gen_rtx_SYMBOL_REF (Pmode,
+			     machopic_indirection_name (orig,
+							/*stub_p=*/false));
+}
+
 /* Return, and mark as used, the name of the stub for the mcount function.
    Currently, this is only called by X86 code in the expansion of the
    FUNCTION_PROFILER macro, when stubs are enabled.  */

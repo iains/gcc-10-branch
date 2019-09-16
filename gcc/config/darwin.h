@@ -721,6 +721,9 @@ ASM_OPTIONS ASM_MMACOSX_VERSION_MIN_SPEC
 #undef TARGET_ASM_SHOULD_RESTORE_CFA_STATE
 #define TARGET_ASM_SHOULD_RESTORE_CFA_STATE darwin_should_restore_cfa_state
 
+/* Make an EH (personality or LDSA) symbol indirect as needed.  */
+#define TARGET_ASM_MAKE_EH_SYMBOL_INDIRECT darwin_make_eh_symbol_indirect
+
 /* Our profiling scheme doesn't LP labels and counter words.  */
 
 #define NO_PROFILE_COUNTERS	1
