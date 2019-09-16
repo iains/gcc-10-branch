@@ -2239,6 +2239,17 @@ darwin_emit_except_table_label (FILE *file)
   ASM_OUTPUT_LABEL (file, section_start_label);
 }
 
+rtx
+darwin_make_eh_symbol_indirect (rtx orig, bool ARG_UNUSED (pubvis))
+{
+  if (DARWIN_PPC == 0 && TARGET_64BIT)
+    return orig;
+
+  return gen_rtx_SYMBOL_REF (Pmode,
+			     machopic_indirection_name (orig,
+							/*stub_p=*/false));
+}
+
 /* The unwinders in earlier Darwin versions are based on an old version
    of libgcc_s and need current frame address stateto be reset after a
    DW_CFA_restore_state recovers the register values.  */
