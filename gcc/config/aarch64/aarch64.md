@@ -282,6 +282,7 @@
     UNSPEC_TAG_SPACE		; Translate address to MTE tag address space.
     UNSPEC_LD1RO
     UNSPEC_SALT_ADDR
+    UNSPEC_MACHOPIC_OFFSET
 ])
 
 (define_c_enum "unspecv" [
@@ -819,6 +820,37 @@
     gcc_assert (IN_RANGE (locality, 0, 3));
 
     /* PRFM accepts the same addresses as a 64-bit LDR so wrap
+       the address into a DImode MEM so that aarch64_print_operand knows
+       how to print it.  */
+    operands[0] = gen_rtx_MEM (DImode, operands[0]);
+    return pftype[INTVAL(operands[1])][locality];
+  }
+  [(set_attr "type" "load_4")]
+)
+
+(define_insn "prefetch_unscaled"
+  [(prefetch (match_operand:DI 0 "aarch64_unscaled_prefetch_operand" "Du")
+            (match_operand:QI 1 "const_int_operand" "")
+            (match_operand:QI 2 "const_int_operand" ""))]
+  ""
+  {
+    const char * pftype[2][4] =
+    {
+      {"prfum\\tPLDL1STRM, %0",
+       "prfum\\tPLDL3KEEP, %0",
+       "prfum\\tPLDL2KEEP, %0",
+       "prfum\\tPLDL1KEEP, %0"},
+      {"prfum\\tPSTL1STRM, %0",
+       "prfum\\tPSTL3KEEP, %0",
+       "prfum\\tPSTL2KEEP, %0",
+       "prfum\\tPSTL1KEEP, %0"},
+    };
+
+    int locality = INTVAL (operands[2]);
+
+    gcc_assert (IN_RANGE (locality, 0, 3));
+
+    /* PRFUM accepts the same addresses as a 64-bit LDR so wrap
        the address into a DImode MEM so that aarch64_print_operand knows
        how to print it.  */
     operands[0] = gen_rtx_MEM (DImode, operands[0]);
@@ -6503,7 +6535,10 @@
 	(lo_sum:P (match_operand:P 1 "register_operand" "r")
 		  (match_operand 2 "aarch64_valid_symref" "S")))]
   ""
-  "add\\t%<w>0, %<w>1, :lo12:%c2"
+  { return TARGET_MACHO
+    ? "add\\t%<w>0, %<w>1, %K2;momd"
+    : "add\\t%<w>0, %<w>1, :lo12:%c2";
+  }
   [(set_attr "type" "alu_imm")]
 )
 
@@ -6514,7 +6549,10 @@
 			      (match_operand:PTR 2 "aarch64_valid_symref" "S")))]
 		    UNSPEC_GOTSMALLPIC))]
   ""
-  "ldr\\t%<w>0, [%1, #:got_lo12:%c2]"
+  { return TARGET_MACHO
+    ? "ldr\\t%<w>0, [%1, %O2];momd"
+    : "ldr\\t%<w>0, [%1, #:got_lo12:%c2]";
+  }
   [(set_attr "type" "load_<ldst_sz>")]
 )
 
