@@ -331,3 +331,8 @@ along with GCC; see the file COPYING3.  If not see
       = darwin_init_cfstring_builtins ((unsigned) (IX86_BUILTIN_CFSTRING)); \
     darwin_rename_builtins ();						\
   } while(0)
+
+#undef CLEAR_INSN_CACHE
+#define CLEAR_INSN_CACHE(beg, end)				\
+  extern void sys_icache_invalidate(void *start, size_t len);	\
+  sys_icache_invalidate ((beg), (size_t)((end)-(beg)))
