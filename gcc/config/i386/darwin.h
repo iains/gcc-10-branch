@@ -323,3 +323,13 @@ along with GCC; see the file COPYING3.  If not see
       = darwin_init_cfstring_builtins ((unsigned) (IX86_BUILTIN_CFSTRING)); \
     darwin_rename_builtins ();						\
   } while(0)
+
+/* Define the shadow offset for asan.  */
+#undef SUBTARGET_SHADOW_OFFSET
+#define SUBTARGET_SHADOW_OFFSET	\
+  (TARGET_LP64 ? HOST_WIDE_INT_1 << 44 : HOST_WIDE_INT_1 << 29)
+
+/* Make sure that any code we generate is compatible with the Fortran/Ada
+   function descriptor impl.  */
+#undef FUNCTION_BOUNDARY
+#define FUNCTION_BOUNDARY 16
