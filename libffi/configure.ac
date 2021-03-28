@@ -57,6 +57,7 @@ AC_SUBST(CFLAGS)
 AM_PROG_AS
 AM_PROG_CC_C_O
 AC_PROG_LIBTOOL
+AM_CONDITIONAL([ENABLE_DARWIN_AT_RPATH], [test x$enable_darwin_at_rpath = xyes])
 
 # Test for 64-bit build.
 AC_CHECK_SIZEOF([size_t])

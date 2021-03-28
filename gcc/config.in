@@ -1538,6 +1538,12 @@
 #endif
 
 
+/* Define if the PE linker has broken DWARF 5 support. */
+#ifndef USED_FOR_TARGET
+#undef HAVE_LD_BROKEN_PE_DWARF5
+#endif
+
+
 /* Define if your linker supports --build-id. */
 #ifndef USED_FOR_TARGET
 #undef HAVE_LD_BUILDID
@@ -1602,6 +1608,12 @@
    into PC-relative form. */
 #ifndef USED_FOR_TARGET
 #undef HAVE_LD_PERSONALITY_RELAXATION
+#endif
+
+
+/* Define if the PE linker supports --disable-dynamicbase option. */
+#ifndef USED_FOR_TARGET
+#undef HAVE_LD_PE_DISABLE_DYNAMICBASE
 #endif
 
 

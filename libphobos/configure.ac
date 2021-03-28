@@ -77,6 +77,7 @@ AC_SUBST(CFLAGS_FOR_BUILD)
 LT_INIT(dlopen)
 AM_PROG_LIBTOOL
 WITH_LOCAL_DRUNTIME([LT_LANG([D])], [])
+AM_CONDITIONAL([ENABLE_DARWIN_AT_RPATH], [test x$enable_darwin_at_rpath = xyes])
 
 # libtool variables for Phobos shared and position-independent compiles.
 #
