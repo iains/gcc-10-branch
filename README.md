@@ -29,6 +29,7 @@ git commit messages can work for that too.
 The following patches have been back-ported or applied preemptively to fix outstanding bugs or improve the compatibility on Darwin.
 
 * Darwin, configury : Allow for specification and detection of dsymutil.
+
   This fixes a long-standing problem (actually from when dsymutil was originally added), where the rules for finding target tools are not applied to dsymutil.  Often we can 'get away with it' because the system installation is close enough.  However that fails if we include an arch that's not covered by the system tool.  This patch treats dsymutil in the same way as 'ld' and 'as' since it needs to match the choices for those tools.
 
 * Handle embedded run-paths (@rpath / rpath) [PR88590]
@@ -61,21 +62,59 @@ The following patches have been back-ported or applied preemptively to fix outst
   This revises the handling of the unwinder to resolve the remaining pieces of this long-standing issue.
 
 * Darwin : Mark the mod init/term section starts with a linker-visible sym.
+
   XCode assemblers insert temp symbols for the start of init or term sections, these are linker-visible and then lead to debug-compare mismatches because the number associated with each of these changes when debug is enabled.
 
 * Darwin : Use a reserved name for the exception tables sect start.
+
   Housekeeping, we should use an implementation-space name for this to avoid conflicts.
   
 * CFI-handling : Add a hook to allow target-specific Personality and LSDA indirections
+
   This back-ports the change to allow us to support .cfi_personality (IT SHOULD NOT BE ENABLED YET, SINCE there are still issues with compact unwind).  Optional, I guess.
   
 * configury : Fix LEB128 support for non-GNU assemblers.
+
  Optional back-port.
  
 * C++ : Add the -stdlib= option.
+
   Optional, but highly recommended, back-port.  On systems where the system stdc++ lib is libc++ this allows GCC to use -stdlib=libc++ to emit code and link the libc++ instead of libstdc++.  This can be very useful (but it requires some self-assembly; the provision of a suitable set of libc++ headers) - there's no way that these can be included in the patch, of course.
 
 * Darwin, libgcc : Adjust min version supported for the OS.
+
   Newer ld64 complain about old system versions being linked - this causes build and test fails for no good reason.  The patch causes the ```crts``` and ```libgcc_s``` to be built for the oldest supported at the given configured case.  NOTE: you still need to use ```MACOSX_DEPLOYMENT_TARGET``` to make all the target libs follow this pattern (however this generally won't affect people just building / testing on self-hosted cases).
 
+### gcc-10-3-extra-backports : Branch Additional Patches
 
+* aarch64: Remove redundant mult pattern
+
+  Backported fix needed for build to succeed with LLVM assembler
+
+* aarch64: Don't emit invalid zero/sign-extend syntax
+
+  Backported fix needed for build to succeed with LLVM assembler
+
+* fortran: ```caf_fail_image``` expects no argument
+
+  Backported bug fix for wrong code gen.
+
+* fortran: Fix function arg types for class objects
+
+  Backported bug fix for wrong code gen.
+
+* fortran: Fix arg types of ```_gfortran_is_extension_of```
+
+  Backported bug fix for wrong code gen.
+
+* fortran: Fix argument types in derived types procedures
+
+  Backported bug fix for wrong code gen.
+
+* config.sub, config.guess : Import upstream 2020-11-07.
+
+  Recognise arm64-apple-darwin20
+
+* aarch64 : Mark rotate immediates with '#' as per DDI0487iFc.
+
+  Backported fix needed for build to succeed with LLVM assembler
