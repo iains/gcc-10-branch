@@ -3664,7 +3664,7 @@ darwin_libc_has_function (enum function_class fn_class)
 	    || (darwin_macosx_version_min &&
 		strverscmp (darwin_macosx_version_min, "10.3") >= 0));
 #endif
-  return default_libc_has_function (fn_class, type);
+  return default_libc_has_function (fn_class);
 }
 
 hashval_t
