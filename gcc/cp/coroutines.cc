@@ -536,11 +536,13 @@ coro_promise_type_found_p (tree fndecl, location_t loc)
       coro_info->self_h_proxy
 	= build_lang_decl (VAR_DECL, coro_self_handle_id,
 			   coro_info->handle_type);
+      DECL_CONTEXT (coro_info->self_h_proxy) = fndecl;
 
       /* Build a proxy for the promise so that we can perform lookups.  */
       coro_info->promise_proxy
 	= build_lang_decl (VAR_DECL, coro_promise_id,
 			   coro_info->promise_type);
+      DECL_CONTEXT (coro_info->promise_proxy) = fndecl;
 
       /* Note where we first saw a coroutine keyword.  */
       coro_info->first_coro_keyword = loc;
@@ -1905,73 +1907,17 @@ struct await_xform_data
   tree actor_frame;
 };
 
-/* When we built the await expressions, we didn't know the coro frame
-   layout, therefore no idea where to find the promise or where to put
-   the awaitables.  Now we know these things, fill them in.  */
-
-static tree
-transform_await_expr (tree await_expr, await_xform_data *xform)
-{
-  suspend_point_info *si = suspend_points->get (await_expr);
-  location_t loc = EXPR_LOCATION (await_expr);
-  if (!si)
-    {
-      error_at (loc, "no suspend point info for %qD", await_expr);
-      return error_mark_node;
-    }
-
-  /* So, on entry, we have:
-     in : CO_AWAIT_EXPR (a, e_proxy, o, awr_call_vector, mode)
-	  We no longer need a [it had diagnostic value, maybe?]
-	  We need to replace the e_proxy in the awr_call.  */
-
-  tree coro_frame_type = TREE_TYPE (xform->actor_frame);
-
-  /* If we have a frame var for the awaitable, get a reference to it.  */
-  proxy_replace data;
-  if (si->await_field_id)
-    {
-      tree as_m
-	 = lookup_member (coro_frame_type, si->await_field_id,
-			  /*protect=*/1, /*want_type=*/0, tf_warning_or_error);
-      tree as = build_class_member_access_expr (xform->actor_frame, as_m,
-						NULL_TREE, true,
-						tf_warning_or_error);
-
-      /* Replace references to the instance proxy with the frame entry now
-	 computed.  */
-      data.from = TREE_OPERAND (await_expr, 1);
-      data.to = as;
-      cp_walk_tree (&await_expr, replace_proxy, &data, NULL);
-
-      /* .. and replace.  */
-      TREE_OPERAND (await_expr, 1) = as;
-    }
-
-  return await_expr;
-}
-
 /* A wrapper for the transform_await_expr function so that it can be a
    callback from cp_walk_tree.  */
 
 static tree
-transform_await_wrapper (tree *stmt, int *do_subtree, void *d)
+transform_await_wrapper (tree *stmt, int */*do_subtree*/, void *d)
 {
   /* Set actor function as new DECL_CONTEXT of label_decl.  */
   struct await_xform_data *xform = (struct await_xform_data *) d;
   if (TREE_CODE (*stmt) == LABEL_DECL
       && DECL_CONTEXT (*stmt) != xform->actor_fn)
     DECL_CONTEXT (*stmt) = xform->actor_fn;
-
-  /* We should have already lowered co_yields to their co_await.  */
-  gcc_checking_assert (TREE_CODE (*stmt) != CO_YIELD_EXPR);
-  if (TREE_CODE (*stmt) != CO_AWAIT_EXPR)
-    return NULL_TREE;
-
-  tree await_expr = *stmt;
-  *stmt = transform_await_expr (await_expr, xform);
-  if (*stmt == error_mark_node)
-    *do_subtree = 0;
   return NULL_TREE;
 }
 
@@ -2187,7 +2133,8 @@ build_actor_fn (location_t loc, tree coro_frame_type, tree actor, tree fnbody,
   /* Declare the continuation handle.  */
   add_decl_expr (continuation);
 
-  /* Re-write local vars, similarly.  */
+  /* Re-write local vars to use DECL_VALUE_EXPRs to refer to their position
+     in the frame (this includes proxies for the function arguments).  */
   local_vars_transform xform_vars_data
     = {actor, actor_frame, coro_frame_type, loc, local_var_uses};
   cp_walk_tree (&fnbody, transform_local_var_uses, &xform_vars_data, NULL);
@@ -2581,10 +2528,13 @@ struct susp_frame_data
   tree *field_list; /* The current coroutine frame field list.  */
   tree handle_type; /* The self-handle type for this coroutine.  */
   tree fs_label;    /* The destination for co_returns.  */
+  tree actor_ctx;    /* The actor function context.  */
   vec<tree, va_gc> *block_stack; /* Track block scopes.  */
   vec<tree, va_gc> *bind_stack;  /* Track current bind expr.  */
-  unsigned await_number;	 /* Which await in the function.  */
-  unsigned cond_number;		 /* Which replaced condition in the fn.  */
+  unsigned bind_depth;	 /* For synthesizing temps.  */
+  unsigned aw_statement; /* Current statement with awaits.  */
+  unsigned await_number; /* Which await in the function.  */
+  unsigned cond_number; /* Which replaced condition in the fn.  */
   /* Temporary values for one statement or expression being analyzed.  */
   hash_set<tree> captured_temps; /* The suspend captured these temps.  */
   vec<tree, va_gc> *to_replace;  /* The VAR decls to replace.  */
@@ -2706,10 +2656,14 @@ find_interesting_subtree (tree *expr_p, int *dosub, void *d)
 struct var_nest_node
 {
   var_nest_node ()
-    : var(NULL_TREE), init(NULL_TREE),
-      prev(NULL), next(NULL), then_cl(NULL), else_cl(NULL) {}
+    : var(NULL_TREE), init(NULL_TREE), cleanup(NULL_TREE),
+      prev(NULL), next(NULL), then_cl(NULL), else_cl(NULL),
+      synthesized_var_p(false), cleanup_head_p(false), awaiter_init_p(false)
+    {}
   var_nest_node (tree v, tree i, var_nest_node *p, var_nest_node *n)
-    : var(v), init(i), prev(p), next(n), then_cl (NULL), else_cl (NULL)
+    : var(v), init(i), cleanup(NULL_TREE),
+      prev(p), next(n), then_cl(NULL), else_cl(NULL),
+      synthesized_var_p(false), cleanup_head_p(false), awaiter_init_p(false)
     {
       if (p)
 	p->next = this;
@@ -2718,10 +2672,14 @@ struct var_nest_node
     }
   tree var;
   tree init;
+  tree cleanup;
   var_nest_node *prev;
   var_nest_node *next;
   var_nest_node *then_cl;
   var_nest_node *else_cl;
+  bool synthesized_var_p;
+  bool cleanup_head_p;
+  bool awaiter_init_p;
 };
 
 /* This is called for single statements from the co-await statement walker.
@@ -2789,7 +2747,7 @@ flatten_await_stmt (var_nest_node *n, hash_set<tree> *promoted,
 	  tree else_cl = COND_EXPR_ELSE (old_expr);
 	  if (!VOID_TYPE_P (TREE_TYPE (else_cl)))
 	    {
-	      gcc_checking_assert (TREE_CODE (then_cl) != STATEMENT_LIST);
+	      gcc_checking_assert (TREE_CODE (else_cl) != STATEMENT_LIST);
 	      else_cl
 		= build2 (init_expr ? INIT_EXPR : MODIFY_EXPR, var_type,
 			  var, else_cl);
@@ -2988,335 +2946,6 @@ handle_nested_conditionals (var_nest_node *n, vec<tree>& list,
     } while (n);
 }
 
-/* helper for 'maybe_promote_temps'.
-
-   When we have a conditional expression which might embed await expressions
-   and/or promoted variables, we need to handle it appropriately.
-
-   The linked lists for the 'then' and 'else' clauses in a conditional node
-   identify the promoted variables (but these cannot be wrapped in a regular
-   cleanup).
-
-   So recurse through the lists and build up a composite list of captured vars.
-   Declare these and any guard variables needed to decide if a DTOR should be
-   run.  Then embed the conditional into a try-finally expression that handles
-   running each DTOR conditionally on its guard variable.  */
-
-static void
-process_conditional (var_nest_node *n, tree& vlist)
-{
-  tree init = n->init;
-  hash_map<tree, tree> var_flags;
-  vec<tree> var_list = vNULL;
-  tree new_then = push_stmt_list ();
-  handle_nested_conditionals (n->then_cl, var_list, var_flags);
-  new_then = pop_stmt_list (new_then);
-  tree new_else = push_stmt_list ();
-  handle_nested_conditionals (n->else_cl, var_list, var_flags);
-  new_else = pop_stmt_list (new_else);
-  /* Declare the vars.  There are two loops so that the boolean flags are
-     grouped in the frame.  */
-  for (unsigned i = 0; i < var_list.length(); i++)
-    {
-      tree var = var_list[i];
-      DECL_CHAIN (var) = vlist;
-      vlist = var;
-      add_decl_expr (var);
-    }
-  /* Define the guard flags for variables that need a DTOR.  */
-  for (unsigned i = 0; i < var_list.length(); i++)
-    {
-      tree *flag = var_flags.get (var_list[i]);
-      if (flag)
-	{
-	  DECL_INITIAL (*flag) = boolean_false_node;
-	  DECL_CHAIN (*flag) = vlist;
-	  vlist = *flag;
-	  add_decl_expr (*flag);
-	}
-    }
-  tree new_if
-    = build4 (IF_STMT, void_type_node, COND_EXPR_COND (init),
-	      new_then, new_else, NULL_TREE);
-  /* Build a set of conditional DTORs.  */
-  tree final_actions = push_stmt_list ();
-  while (!var_list.is_empty())
-    {
-      tree var = var_list.pop ();
-      tree *flag = var_flags.get (var);
-      if (!flag)
-	continue;
-      tree var_type = TREE_TYPE (var);
-      tree cleanup
-	= build_special_member_call (var, complete_dtor_identifier,
-				     NULL, var_type, LOOKUP_NORMAL,
-				     tf_warning_or_error);
-      tree cond_cleanup = begin_if_stmt ();
-      finish_if_stmt_cond (*flag, cond_cleanup);
-      finish_expr_stmt (cleanup);
-      finish_then_clause (cond_cleanup);
-      finish_if_stmt (cond_cleanup);
-    }
-  final_actions = pop_stmt_list (final_actions);
-  tree try_finally
-    = build2 (TRY_FINALLY_EXPR, void_type_node, new_if, final_actions);
-  add_stmt (try_finally);
-}
-
-/* Given *STMT, that contains at least one await expression.
-
-   The full expression represented in the original source code will contain
-   suspension points, but it is still required that the lifetime of temporary
-   values extends to the end of the expression.
-
-   We already have a mechanism to 'promote' user-authored local variables
-   to a coroutine frame counterpart (which allows explicit management of the
-   lifetime across suspensions).  The transform here re-writes STMT into
-   a bind expression, promotes temporary values into local variables in that
-   and flattens the statement into a series of cleanups.
-
-   Conditional expressions are re-written to regular 'if' statements.
-   The cleanups for variables initialized inside a conditional (including
-   nested cases) are wrapped in a try-finally clause, with guard variables
-   to determine which DTORs need to be run.  */
-
-static tree
-maybe_promote_temps (tree *stmt, void *d)
-{
-  susp_frame_data *awpts = (susp_frame_data *) d;
-
-  location_t sloc = EXPR_LOCATION (*stmt);
-  tree expr = *stmt;
-  /* Strip off uninteresting wrappers.  */
-  if (TREE_CODE (expr) == CLEANUP_POINT_EXPR)
-    expr = TREE_OPERAND (expr, 0);
-  if (TREE_CODE (expr) == EXPR_STMT)
-    expr = EXPR_STMT_EXPR (expr);
-  if (TREE_CODE (expr) == CONVERT_EXPR
-      && VOID_TYPE_P (TREE_TYPE (expr)))
-    expr = TREE_OPERAND (expr, 0);
-  STRIP_NOPS (expr);
-
-  /* We walk the statement trees, flattening it into an ordered list of
-     variables with initializers and fragments corresponding to compound
-     expressions, truth or/and if and ternary conditionals.  Conditional
-     expressions carry a nested list of fragments for the then and else
-     clauses.  We anchor to the 'bottom' of the fragment list; we will write
-     a cleanup nest with one shell for each variable initialized.  */
-  var_nest_node *root = new var_nest_node (NULL_TREE, expr, NULL, NULL);
-  /* Check to see we didn't promote one twice.  */
-  hash_set<tree> promoted_vars;
-  hash_set<tree> used_temps;
-  flatten_await_stmt (root, &promoted_vars, &used_temps, NULL);
-
-  gcc_checking_assert (root->next == NULL);
-  tree vlist = NULL_TREE;
-  var_nest_node *t = root;
-  /* We build the bind scope expression from the bottom-up.
-     EXPR_LIST holds the inner expression nest at the current cleanup
-     level (becoming the final expression list when we've exhausted the
-     number of sub-expression fragments).  */
-  tree expr_list = NULL_TREE;
-  do
-    {
-      tree new_list = push_stmt_list ();
-      /* When we have a promoted variable, then add that to the bind scope
-	 and initialize it.  When there's no promoted variable, we just need
-	 to run the initializer.
-	 If the initializer is a conditional expression, we need to collect
-	 and declare any promoted variables nested within it.  DTORs for such
-	 variables must be run conditionally too.  */
-      if (t->var && DECL_NAME (t->var))
-	{
-	  tree var = t->var;
-	  DECL_CHAIN (var) = vlist;
-	  vlist = var;
-	  add_decl_expr (var);
-	  if (TREE_CODE (t->init) == COND_EXPR)
-	    process_conditional (t, vlist);
-	  else
-	    finish_expr_stmt (t->init);
-	  tree var_type = TREE_TYPE (var);
-	  if (TYPE_HAS_NONTRIVIAL_DESTRUCTOR (var_type))
-	    {
-	      tree cleanup
-		= build_special_member_call (var, complete_dtor_identifier,
-					     NULL, var_type, LOOKUP_NORMAL,
-					     tf_warning_or_error);
-	      tree cl = build_stmt (sloc, CLEANUP_STMT, expr_list, cleanup, var);
-	      add_stmt (cl); /* push this onto the level above.  */
-	    }
-	  else if (expr_list)
-	    {
-	      if (TREE_CODE (expr_list) != STATEMENT_LIST)
-		add_stmt (expr_list);
-	      else if (!tsi_end_p (tsi_start (expr_list)))
-		add_stmt (expr_list);
-	    }
-	}
-      else
-	{
-	  if (TREE_CODE (t->init) == COND_EXPR)
-	    process_conditional (t, vlist);
-	  else
-	    finish_expr_stmt (t->init);
-	  if (expr_list)
-	    {
-	      if (TREE_CODE (expr_list) != STATEMENT_LIST)
-		add_stmt (expr_list);
-	      else if (!tsi_end_p (tsi_start (expr_list)))
-		add_stmt (expr_list);
-	    }
-	}
-      expr_list = pop_stmt_list (new_list);
-      var_nest_node *old = t;
-      t = t->prev;
-      delete old;
-    } while (t);
-
-  /* Now produce the bind expression containing the 'promoted' temporaries
-     as its variable list, and the cleanup nest as the statement.  */
-  tree await_bind = build3_loc (sloc, BIND_EXPR, void_type_node,
-				NULL, NULL, NULL);
-  BIND_EXPR_BODY (await_bind) = expr_list;
-  BIND_EXPR_VARS (await_bind) = nreverse (vlist);
-  tree b_block = make_node (BLOCK);
-  if (!awpts->block_stack->is_empty ())
-    {
-      tree s_block = awpts->block_stack->last ();
-      if (s_block)
-	{
-	BLOCK_SUPERCONTEXT (b_block) = s_block;
-	BLOCK_CHAIN (b_block) = BLOCK_SUBBLOCKS (s_block);
-	BLOCK_SUBBLOCKS (s_block) = b_block;
-	}
-    }
-  BLOCK_VARS (b_block) = BIND_EXPR_VARS (await_bind) ;
-  BIND_EXPR_BLOCK (await_bind) = b_block;
-  TREE_SIDE_EFFECTS (await_bind) = TREE_SIDE_EFFECTS (BIND_EXPR_BODY (await_bind));
-  *stmt = await_bind;
-  hash_set<tree> visited;
-  return cp_walk_tree (stmt, register_awaits, d, &visited);
-}
-
-/* Lightweight callback to determine two key factors:
-   1) If the statement/expression contains any await expressions.
-   2) If the statement/expression potentially requires a re-write to handle
-      TRUTH_{AND,OR}IF_EXPRs since, in most cases, they will need expansion
-      so that the await expressions are not processed in the case of the
-      short-circuit arm.
-
-   CO_YIELD expressions are re-written to their underlying co_await.  */
-
-static tree
-analyze_expression_awaits (tree *stmt, int *do_subtree, void *d)
-{
-  susp_frame_data *awpts = (susp_frame_data *) d;
-
-  switch (TREE_CODE (*stmt))
-    {
-      default: return NULL_TREE;
-      case CO_YIELD_EXPR:
-	/* co_yield is syntactic sugar, re-write it to co_await.  */
-	*stmt = TREE_OPERAND (*stmt, 1);
-	/* FALLTHROUGH */
-      case CO_AWAIT_EXPR:
-	awpts->saw_awaits++;
-	/* A non-null initializer for the awaiter means we need to expand.  */
-	if (TREE_OPERAND (*stmt, 2))
-	  awpts->has_awaiter_init = true;
-	break;
-      case TRUTH_ANDIF_EXPR:
-      case TRUTH_ORIF_EXPR:
-	{
-	  /* We don't need special action for awaits in the always-executed
-	     arm of a TRUTH_IF.  */
-	  if (tree res = cp_walk_tree (&TREE_OPERAND (*stmt, 0),
-				       analyze_expression_awaits, d, NULL))
-	    return res;
-	  /* However, if there are await expressions on the conditionally
-	     executed branch, we must expand the TRUTH_IF to ensure that the
-	     expanded await expression control-flow is fully contained in the
-	     conditionally executed code.  */
-	  unsigned aw_count = awpts->saw_awaits;
-	  if (tree res = cp_walk_tree (&TREE_OPERAND (*stmt, 1),
-				       analyze_expression_awaits, d, NULL))
-	    return res;
-	  if (awpts->saw_awaits > aw_count)
-	    {
-	      awpts->truth_aoif_to_expand->add (*stmt);
-	      awpts->needs_truth_if_exp = true;
-	    }
-	  /* We've done the sub-trees here.  */
-	  *do_subtree = 0;
-	}
-	break;
-    }
-
-  return NULL_TREE; /* Recurse until done.  */
-}
-
-/* Given *EXPR
-   If EXPR contains a TRUTH_{AND,OR}IF_EXPR, TAOIE with an await expr on
-   the conditionally executed branch, change this in a ternary operator.
-
-   bool not_expr = TAOIE == TRUTH_ORIF_EXPR ? NOT : NOP;
-   not_expr (always-exec expr) ? conditionally-exec expr : not_expr;
-
-   Apply this recursively to the condition and the conditionally-exec
-   branch.  */
-
-struct truth_if_transform {
-  tree *orig_stmt;
-  tree scratch_var;
-  hash_set<tree> *truth_aoif_to_expand;
-};
-
-static tree
-expand_one_truth_if (tree *expr, int *do_subtree, void *d)
-{
-  truth_if_transform *xform = (truth_if_transform *) d;
-
-  bool needs_not = false;
-  switch (TREE_CODE (*expr))
-    {
-      default: break;
-      case TRUTH_ORIF_EXPR:
-	needs_not = true;
-	/* FALLTHROUGH */
-      case TRUTH_ANDIF_EXPR:
-	{
-	  if (!xform->truth_aoif_to_expand->contains (*expr))
-	    break;
-
-	  location_t sloc = EXPR_LOCATION (*expr);
-	  /* Transform truth expression into a cond expression with
-	     * the always-executed arm as the condition.
-	     * the conditionally-executed arm as the then clause.
-	     * the 'else' clause is fixed: 'true' for ||,'false' for &&.  */
-	  tree cond = TREE_OPERAND (*expr, 0);
-	  tree test1 = TREE_OPERAND (*expr, 1);
-	  tree fixed = needs_not ? boolean_true_node : boolean_false_node;
-	  if (needs_not)
-	    cond = build1 (TRUTH_NOT_EXPR, boolean_type_node, cond);
-	  tree cond_expr
-	    = build3_loc (sloc, COND_EXPR, boolean_type_node,
-			  cond, test1, fixed);
-	  *expr = cond_expr;
-	  if (tree res = cp_walk_tree (&COND_EXPR_COND (*expr),
-				       expand_one_truth_if, d, NULL))
-	    return res;
-	  if (tree res = cp_walk_tree (&COND_EXPR_THEN (*expr),
-				       expand_one_truth_if, d, NULL))
-	    return res;
-	  /* We've manually processed necessary sub-trees here.  */
-	  *do_subtree = 0;
-	}
-	break;
-    }
-  return NULL_TREE;
-}
-
 /* Helper that adds a new variable of VAR_TYPE to a bind scope BIND, the
    name is made up from NAM_ROOT, NAM_VERS.  */
 
@@ -3327,12 +2956,1535 @@ add_var_to_bind (tree& bind, tree var_type,
   tree b_vars = BIND_EXPR_VARS (bind);
   /* Build a variable to hold the condition, this will be included in the
      frame as a local var.  */
-  char *nam = xasprintf ("%s.%d", nam_root, nam_vers);
+  char *nam = xasprintf ("_T%s_%d", nam_root, nam_vers);
   tree newvar = build_lang_decl (VAR_DECL, get_identifier (nam), var_type);
   free (nam);
   DECL_CHAIN (newvar) = b_vars;
   BIND_EXPR_VARS (bind) = newvar;
   return newvar;
+}
+
+/* In order to handle a suspension expression, we must:
+   a) preserve temporaries across it where they are used in the final
+      computation.
+   b) extend the lifetimes of temporaries captured by reference,
+*/
+
+struct coro_flattened_statement {
+  struct tree_pair {
+    tree guard;
+    tree cleanup;
+  };
+  tree original; /* The statement we are flattening.  */
+  var_nest_node *head, *tail; /* Top and bottom of a sub-expr linked list.  */
+  unsigned statement_number; /* Current statement (with awaits).  */
+  unsigned temp_number; /* Used to disambiguate created temps.  */
+  auto_vec<tree> vars; /* Variables that we need to add to the bind.  */
+  auto_vec<tree> guard_vars; /* Guards for vars with non-trivial dtors.  */
+  hash_map<tree, tree_pair> vars_set; /* Whether we have a var and its guard.  */
+  tree revised_statements; /* A tree list of the flattened sub-statements.  */
+  tree bind_vars = NULL_TREE;
+  auto_vec<tree *> addr_exprs; /* address-taken sub-expressions.  */
+
+  coro_flattened_statement (tree orig, unsigned st_number)
+    : original (orig), head (NULL), tail (NULL), statement_number (st_number),
+      temp_number (0)
+    {
+       tail = new var_nest_node (NULL_TREE, original, NULL, NULL);
+       head = tail;
+    }
+
+  ~coro_flattened_statement ()
+    {
+      vars_set.empty ();
+    }
+
+  static tree *find_unary_preamble (tree, bool&);
+  static bool expr_result_needs_frame_temp (tree);
+
+  tree get_flattened_statement (tree);
+  void build_flattened_statement ();
+  tree expression_for_node (var_nest_node *);
+  tree expression_for_node_list (var_nest_node *);
+  tree maybe_set_guard_for_var (tree, tree);
+  bool sets_var_p (tree, tree);
+  void untree ();
+  void flatten_expression (var_nest_node *);
+  void promote_node_temporaries (var_nest_node *);
+  void promote_temporaries_list (var_nest_node *);
+  void promote_node (var_nest_node *);
+  void promote_list (var_nest_node *);
+  var_nest_node *unwind (var_nest_node *);
+  void flatten_aggr_init (var_nest_node *, tree, tree_code, tree, bool);
+  tree flatten_await_inner (var_nest_node *, tree);
+  void flatten_await (var_nest_node *, tree, tree_code, tree, bool);
+  void flatten_binary (var_nest_node *, tree, tree_code, tree, bool);
+  void handle_call_param (var_nest_node *, tree *, const char *);
+  void flatten_call (var_nest_node *, tree, tree_code, tree, bool);
+  void flatten_cleanup (var_nest_node *, tree, tree_code, tree, bool);
+  void flatten_compound (var_nest_node *, tree,tree_code, tree, bool);
+  void flatten_constructor (var_nest_node *, tree, tree_code, tree, bool);
+  void flatten_target (var_nest_node *, tree, tree_code, tree, bool, bool);
+  void flatten_ternary (var_nest_node *, tree, tree_code, tree, bool);
+  void flatten_truth_if (var_nest_node *, tree, tree_code, tree, bool);
+};
+
+tree
+coro_flattened_statement::get_flattened_statement (tree s_block)
+{
+  location_t sloc = EXPR_LOCATION (original);
+  tree await_bind = build3_loc (sloc, BIND_EXPR, void_type_node,
+				NULL, NULL, NULL);
+  BIND_EXPR_BODY (await_bind) = revised_statements;
+  BIND_EXPR_VARS (await_bind) = bind_vars;
+  tree b_block = make_node (BLOCK);
+  if (s_block)
+    {
+      BLOCK_SUPERCONTEXT (b_block) = s_block;
+      BLOCK_CHAIN (b_block) = BLOCK_SUBBLOCKS (s_block);
+      BLOCK_SUBBLOCKS (s_block) = b_block;
+    }
+  BLOCK_VARS (b_block) = BIND_EXPR_VARS (await_bind) ;
+  BIND_EXPR_BLOCK (await_bind) = b_block;
+  TREE_SIDE_EFFECTS (await_bind) = TREE_SIDE_EFFECTS (revised_statements);
+  return await_bind;
+}
+
+void
+coro_flattened_statement::build_flattened_statement ()
+{
+  /* This walks the flattened statements adding vars and building the main
+     part of the expresssion.  */
+  tree body = expression_for_node_list (head);
+  bool need_tf = guard_vars.length () != 0;
+
+  /* We add the vars in reverse order, so no need to reverse the bind vars.
+     Put the boolean guard vars together.  */
+  tree try_ = push_stmt_list ();
+  tree finally_ = NULL_TREE;
+  while (!guard_vars.is_empty())
+    {
+      tree var = guard_vars.pop ();
+      DECL_CHAIN (var) = bind_vars;
+      bind_vars = var;
+    }
+  /* Preceded by the main set.  */
+  auto_vec<tree> dtor_list;
+  while (!vars.is_empty())
+    {
+      tree var = vars.pop ();
+      DECL_CHAIN (var) = bind_vars;
+      if (tree_pair *t = vars_set.get (var))
+	if (t->guard)
+	  dtor_list.safe_push (var);
+      bind_vars = var;
+    }
+
+  tree var = bind_vars;
+  while (var)
+    {
+      add_decl_expr (var);
+      var = DECL_CHAIN (var);
+    }
+
+  add_stmt (body);
+
+  if (need_tf)
+    {
+      try_ = pop_stmt_list (try_);
+      finally_ = push_stmt_list ();
+    }
+
+  /* Add conditional DTORs, which were pushed in the reverse order - so that
+     we need to traverse the array forwards.  */
+  for (unsigned x = 0; x < dtor_list.length (); ++x)
+    {
+      tree var = dtor_list[x];
+      tree_pair *t = vars_set.get (var);
+      if (!t)
+	continue;
+
+      tree guard_var = t->guard;
+      tree cleanup = t->cleanup;
+
+      gcc_checking_assert (guard_var && cleanup);
+      tree cond_cleanup = begin_if_stmt ();
+      finish_if_stmt_cond (guard_var, cond_cleanup);
+      finish_expr_stmt (cleanup);
+      finish_then_clause (cond_cleanup);
+      finish_if_stmt (cond_cleanup);
+    }
+
+  if (need_tf)
+    {
+      finally_ = pop_stmt_list (finally_);
+      revised_statements = build2 (TRY_FINALLY_EXPR, void_type_node,
+				   try_, finally_);
+    }
+  else
+    revised_statements = pop_stmt_list (try_);
+}
+
+tree
+coro_flattened_statement::expression_for_node_list (var_nest_node *start)
+{
+  tree new_list = push_stmt_list ();
+  for (var_nest_node *node = start; node;)
+    {
+      tree t = expression_for_node (node);
+      if (STATEMENT_CLASS_P (t)
+	  || !EXPR_P (t))
+	add_stmt (t);
+      else
+	finish_expr_stmt (t);
+      var_nest_node *oldnode = node;
+      node = node->next;
+      delete oldnode;
+    }
+  return pop_stmt_list (new_list);
+}
+
+tree
+coro_flattened_statement::expression_for_node (var_nest_node *t)
+{
+  if (!t)
+    return error_mark_node;
+
+  location_t loc = EXPR_LOCATION (t->init);
+  tree set_guard = NULL_TREE;
+  /* The variable could be wrapped in a view-convert-expr.  */
+  tree var = t->var;
+  if (var)
+    STRIP_NOPS (var);
+
+  if (var
+      && t->synthesized_var_p
+      && sets_var_p (var, t->init))
+    if (tree guard = maybe_set_guard_for_var (var, t->cleanup))
+      set_guard = build2_loc (loc, MODIFY_EXPR, boolean_type_node,
+			      guard, boolean_true_node);
+
+  tree res = NULL_TREE;
+  if (TREE_CODE (t->init) == COND_EXPR && t->then_cl)
+    {
+      tree cond_ = TREE_OPERAND (t->init, 0);
+      tree then_ = expression_for_node_list (t->then_cl);
+      tree else_ = NULL_TREE;
+      if (t->else_cl)
+	else_ = expression_for_node_list (t->else_cl);
+      res = build4_loc (loc, IF_STMT, void_type_node,
+			cond_, then_, else_, NULL_TREE);
+    }
+  else if (t->cleanup_head_p && t->then_cl)
+    res = expression_for_node_list (t->then_cl);
+  else
+    res = t->init;
+  if (set_guard)
+    res = build2_loc (loc, COMPOUND_EXPR, boolean_type_node, res, set_guard);
+  return res;
+}
+
+/* See if we need to add VAR to the bind expression variables for the current
+   statement expansion.  If so return true.  */
+
+tree 
+coro_flattened_statement::maybe_set_guard_for_var (tree var, tree cleanup)
+{
+  bool existed;
+
+  tree_pair &gvc = vars_set.get_or_insert (var, &existed);
+  if (existed)
+    return gvc.guard; /* NULL_TREE if we do not need a guard.  */
+
+  gvc.guard = NULL_TREE; /* Default to not needing a guard.  */
+  gvc.cleanup = NULL_TREE;
+  vars.safe_push (var);
+
+  tree var_type = TREE_TYPE (var);
+  if (cleanup || TYPE_HAS_NONTRIVIAL_DESTRUCTOR (var_type))
+    {
+      tree name = DECL_NAME (var);
+      char *buf;
+      if (name)
+	buf = xasprintf ("_Coro_%s_guard", IDENTIFIER_POINTER (name));
+      else
+	buf = xasprintf ("_Coro_%u_%u_guard", statement_number, temp_number++);
+      tree guard_var = build_lang_decl (VAR_DECL, get_identifier (buf),
+					boolean_type_node);
+      free (buf);
+      DECL_ARTIFICIAL (guard_var) = true;
+      DECL_CONTEXT (guard_var) = DECL_CONTEXT (var);
+      DECL_INITIAL (guard_var) = boolean_false_node;
+      guard_vars.safe_push (guard_var);
+      gvc.guard = guard_var;
+      if (!cleanup)
+	cleanup = build_special_member_call (var, complete_dtor_identifier,
+					     NULL, var_type, LOOKUP_NORMAL,
+					     tf_warning_or_error);
+      gvc.cleanup = cleanup;
+    }
+
+  return gvc.guard;
+}
+
+bool
+coro_flattened_statement::sets_var_p (tree v, tree expr)
+{
+  if (!expr)
+    return false;
+
+  STRIP_NOPS (expr);
+  switch (TREE_CODE (expr))
+    {
+      default: break;
+      case INIT_EXPR:
+      {
+	tree x = TREE_OPERAND (expr, 0);
+	STRIP_NOPS (x);
+	return (x == v);
+      }
+      case TARGET_EXPR:
+	return TARGET_EXPR_SLOT (expr) == v;
+      case AGGR_INIT_EXPR:
+	return AGGR_INIT_EXPR_SLOT (expr) == v;
+      case CONSTRUCTOR:
+	break;
+    }
+  return false;
+}
+
+/* Having split subexpressions, and inserted them, we now work back through
+   the stacks finding the head pointers.  */
+
+var_nest_node *
+coro_flattened_statement::unwind (var_nest_node *t)
+{
+  while (true)
+    {
+      if (t->then_cl)
+	t->then_cl = unwind (t->then_cl);
+      if (t->else_cl)
+	t->else_cl = unwind (t->else_cl);
+      if (!t->prev)
+	break;
+      t = t->prev;
+    }
+  return t;
+}
+
+/* tree-walk callback that processes address-taken expressions recursively.  */
+
+static tree
+find_addr_expr_r (tree *expr_p, int *dosub, void *d)
+{
+  tree expr = *expr_p;
+  var_nest_node *t = (var_nest_node *)d;
+
+  if (TREE_CODE (expr) == CO_AWAIT_EXPR)
+    *dosub = 0; /* Do not recurse into this, nothing interesting here.  */
+  else if (TREE_CODE (expr) == CALL_EXPR)
+    {
+      /* Ignore the addr-expr on the function, but check the parms.  */
+      for (int p_num = 0; p_num < call_expr_nargs (expr); p_num++)
+	{
+	  hash_set<tree> visited;
+	  visited.empty ();
+	  cp_walk_tree (&CALL_EXPR_ARG(expr, p_num), find_addr_expr_r,
+			d, &visited);
+	}
+      *dosub = 0; /* We handled this.  */
+    }
+  else if (TREE_CODE (expr) == AGGR_INIT_EXPR)
+    {
+      /* Ignore the addr-expr on the function, but check the parms.  */
+      for (int p_num = 0; p_num < aggr_init_expr_nargs (expr); p_num++)
+	{
+	  hash_set<tree> visited;
+	  visited.empty ();
+	  cp_walk_tree (&AGGR_INIT_EXPR_ARG (expr, p_num), find_addr_expr_r,
+			d, &visited);
+	}
+      *dosub = 0; /* We handled this.  */
+    }
+  else if (TREE_CODE (expr) == ADDR_EXPR)
+    {
+      tree op = TREE_OPERAND (expr, 0);
+      bool addr_taken = false;
+      tree *replace
+	= coro_flattened_statement::find_unary_preamble (op, addr_taken);
+      gcc_checking_assert (!addr_taken);
+      if (replace)
+	op = *replace;
+      if (!coro_flattened_statement::expr_result_needs_frame_temp (op))
+	return NULL_TREE; /* We should continue to recurse here.. */
+      /* this would mean we encountered an addr-taken without its TE.  */
+      tree var;
+      tree cleanup = NULL_TREE;
+      tree init = op;
+      tree op_type = TREE_TYPE (op);
+static unsigned temp_number = 0; // quick hack, fixme
+      char *nam = xasprintf ("_TP_%u", temp_number++);
+      tree name = get_identifier (nam);
+      free (nam);
+      if (VAR_P (op))
+	{
+	  DECL_NAME (op) = name;
+	  *dosub = 0; /* We handled this.  */
+	  return NULL_TREE; /* nothing to recurse into.  */
+	}
+      if (TREE_CODE (op) == TARGET_EXPR
+	  && !TARGET_EXPR_NO_ELIDE (op)
+	  && !VOID_TYPE_P (TREE_TYPE (TARGET_EXPR_INITIAL (op))))
+	{
+	  /* We are going to elide the target expression and re-use its var.  */
+	  var = TARGET_EXPR_SLOT (op);
+	  DECL_NAME (var) = name; /* Promote its temp.  */
+	  init = TARGET_EXPR_INITIAL (op);
+	  cleanup = TARGET_EXPR_CLEANUP (op); /* and use the cleanup.  */
+	  if (TREE_CODE (init) == INIT_EXPR)
+	    {
+	      gcc_checking_assert (TREE_OPERAND (init, 0) == var);
+	      init = TREE_OPERAND (init, 1);
+	    }
+	}
+      else 
+	/* If we cannot elide the TE, assign it to a new frame var.  */
+	var = build_lang_decl (VAR_DECL, name, op_type);
+
+      gcc_checking_assert (TREE_CODE (init) != INIT_EXPR);
+      init = build2 (INIT_EXPR, op_type, var, init);
+
+      var_nest_node *ins = new var_nest_node (var, init, t->prev, t);
+      ins->synthesized_var_p = true;
+      ins->cleanup = cleanup;
+      if (replace)
+	* replace = var;
+      else
+	TREE_OPERAND (expr, 0) = var;
+      /* Recurse into the replaced expr.  */
+      hash_set<tree> visited;
+      cp_walk_tree (&ins->init, find_addr_expr_r, ins, &visited);
+      *dosub = 0; /* We handled this.  */
+
+    }
+
+  return NULL_TREE;
+}
+
+/* Promote address-captured temps.
+   When a frame variable is initialized with an expression that might capture
+   temporary values by reference, those values also need to have their lifetime
+   extended.  */
+
+void
+coro_flattened_statement::promote_node (var_nest_node *t)
+{
+  tree expr = t->init;
+  if (!expr)
+    return;
+
+  /* Any address-taken expression with an un-promoted temp will be given
+     a variable.  */
+  hash_set<tree> visited;
+  cp_walk_tree (&t->init, find_addr_expr_r, t, &visited);
+}
+
+void
+coro_flattened_statement::promote_list (var_nest_node *t)
+{
+  /* Get to the current top and work from there.  */
+  while (t->prev)
+    t = t->prev;
+
+  while (true)
+    {
+      promote_node (t);
+      if (t->then_cl)
+	promote_list (t->then_cl);
+      if (t->else_cl)
+	promote_list (t->else_cl);
+      if (!t->next)
+	break;
+      t = t->next;
+    }
+}
+
+/* Blanket promotion of all temps.  */
+
+/* Promote any TE encountered .  */
+
+static tree
+promote_temporaries (tree *expr_p, int *dosub, void *d)
+{
+  tree expr = *expr_p;
+  var_nest_node *t = (var_nest_node *)d;
+
+static unsigned temp_number = 0;
+  char *nam = xasprintf ("_TX_%u", temp_number);
+  tree name = get_identifier (nam);
+  free (nam);
+
+  switch (TREE_CODE (expr))
+    {
+      default: break;
+      case CO_AWAIT_EXPR:
+	*dosub = 0;
+	break;
+      case CALL_EXPR:
+	for (int p_num = 0; p_num < call_expr_nargs (expr); p_num++)
+	  {
+	    hash_set<tree> visited;
+	    visited.empty ();
+	    cp_walk_tree (&CALL_EXPR_ARG(expr, p_num), promote_temporaries,
+			  d, &visited);
+	  }
+	*dosub = 0; /* We handled this.  */
+	break;
+      case AGGR_INIT_EXPR:
+	for (int p_num = 0; p_num < aggr_init_expr_nargs (expr); p_num++)
+	  {
+	    hash_set<tree> visited;
+	    visited.empty ();
+	    cp_walk_tree (&AGGR_INIT_EXPR_ARG (expr, p_num),
+			  promote_temporaries, d, &visited);
+	  }
+	*dosub = 0; /* We handled this.  */
+	break;
+      case INIT_EXPR:
+	{
+	  tree var = TREE_OPERAND (expr, 0);
+	  if (TREE_CODE (var) == VIEW_CONVERT_EXPR)
+	    var = TREE_OPERAND (var, 0);
+	  STRIP_NOPS (var);
+	  gcc_checking_assert (VAR_P (var));
+	  if (!DECL_NAME (var))
+	    {
+	      DECL_NAME (var) = name;
+	      temp_number++;
+	    }
+	  tree init = TREE_OPERAND (expr, 1);
+	  hash_set<tree> visited;
+	  if (TREE_CODE (init) == TARGET_EXPR)
+	    cp_walk_tree (&TARGET_EXPR_INITIAL (TREE_OPERAND (expr, 1)),
+			  promote_temporaries, d, &visited);
+	  else
+	    cp_walk_tree (&TREE_OPERAND (expr, 1),
+			  promote_temporaries, d, &visited);
+	  *dosub = 0; /* We handled this.  */
+	}
+	break;
+      case TARGET_EXPR:
+	{
+	  tree cleanup = NULL_TREE;
+	  tree init = TARGET_EXPR_INITIAL (expr);
+	  tree var = TARGET_EXPR_SLOT (expr);
+	  tree var_type = TREE_TYPE (var);
+	  if (!TARGET_EXPR_NO_ELIDE (expr)
+	      && !VOID_TYPE_P (TREE_TYPE (init)))
+	    {
+	      /* We are going to elide the target expression.  */
+	      DECL_NAME (var) = name; /* Promote its temp.  */
+	      cleanup = TARGET_EXPR_CLEANUP (expr); /* and use the cleanup.  */
+	      if (TREE_CODE (init) == INIT_EXPR)
+		{
+		  gcc_checking_assert (TREE_OPERAND (init, 0) == var);
+		  init = TREE_OPERAND (init, 1);
+		}
+	    }
+	  else 
+	    /* If we cannot elide the TE, assign it to a new frame var.  */
+	    var = build_lang_decl (VAR_DECL, name, var_type);
+	  temp_number++;
+
+	  gcc_checking_assert (TREE_CODE (init) != INIT_EXPR);
+	  init = build2 (INIT_EXPR, var_type, var, init);
+
+	  var_nest_node *ins = new var_nest_node (var, init, t->prev, t);
+	  ins->synthesized_var_p = true;
+	  ins->cleanup = cleanup;
+	  *expr_p = var;
+	  /* Recurse into the replaced expr.  */
+	  hash_set<tree> visited;
+	  cp_walk_tree (&ins->init, promote_temporaries, ins, &visited);
+	  *dosub = 0; /* We handled this.  */
+	}
+	break;
+    }
+  return NULL_TREE;
+}
+void
+coro_flattened_statement::promote_node_temporaries (var_nest_node *t)
+{
+  tree expr = t->init;
+  if (!expr)
+    return;
+
+  /* Any address-taken expression with an un-promoted temp will be given
+     a variable.  */
+  hash_set<tree> visited;
+  cp_walk_tree (&t->init, promote_temporaries, t, &visited);
+}
+
+void
+coro_flattened_statement::promote_temporaries_list (var_nest_node *t)
+{
+  /* Get to the current top and work from there.  */
+  while (t->prev)
+    t = t->prev;
+
+  while (true)
+    {
+      promote_node (t);
+      if (t->then_cl)
+	promote_temporaries_list (t->then_cl);
+      if (t->else_cl)
+	promote_temporaries_list (t->else_cl);
+      if (!t->next)
+	break;
+      t = t->next;
+    }
+}
+
+/* This scans an expression for the first component that is any of:
+   non-unary expression
+   expression with more than one parameter.
+   stmt expression
+   cleanup expression.
+
+   If the expression has no unary prefix, then we will return NULL
+   otherwise a tree pointer to the first component that matches as
+   above.  */
+
+tree *
+coro_flattened_statement::find_unary_preamble (tree expr, bool& addr_taken)
+{
+  tree *non_u_ptr = NULL;
+  bool done = false;
+
+  /* Find the first non-unary operation in an expression.  */
+  while (!done)
+    if (UNARY_CLASS_P (expr)
+	|| (EXPRESSION_CLASS_P (expr)
+	    && TREE_CODE_LENGTH (TREE_CODE (expr)) == 1)
+	|| TREE_CODE (expr) == INDIRECT_REF
+	|| TREE_CODE (expr) == VIEW_CONVERT_EXPR)
+      {
+	if (TREE_CODE (expr) == STMT_EXPR
+	    || TREE_CODE (expr) == CLEANUP_POINT_EXPR)
+	  break;
+	gcc_checking_assert (TREE_CODE (expr) != WITH_CLEANUP_EXPR);
+	if (TREE_CODE (expr) == ADDR_EXPR)
+	  addr_taken = true;
+	non_u_ptr = &TREE_OPERAND (expr, 0);
+	expr = TREE_OPERAND (expr, 0);
+      }
+    else
+      done = true;
+
+  return non_u_ptr;
+}
+
+/* EXPR is an expression with a result that must persist across one or more
+   suspension points, does this need a frame var?  */
+
+bool
+coro_flattened_statement::expr_result_needs_frame_temp (tree expr)
+{
+  STRIP_NOPS (expr);
+  switch (TREE_CODE (expr))
+    {
+    case VAR_DECL:
+      if (DECL_NAME (expr))
+	return false;
+      break;
+    case PARM_DECL:
+      return false;
+    case COMPONENT_REF:
+      /* Look for the base object.  */
+      do expr = TREE_OPERAND (expr, 0);
+      while (TREE_CODE (expr) == COMPONENT_REF);
+      return expr_result_needs_frame_temp (expr);
+    default: break;
+    }
+  return true;
+}
+
+void
+coro_flattened_statement::flatten_aggr_init (var_nest_node *t, tree expr,
+					     tree_code expr_code,
+					     tree unary_preamble,
+					     bool discarded)
+{
+  location_t loc = EXPR_LOCATION (expr);
+
+  gcc_checking_assert (expr_code == INIT_EXPR);
+  
+  for (int p_num = 0; p_num < aggr_init_expr_nargs (expr); p_num++)
+    handle_call_param (t, &AGGR_INIT_EXPR_ARG (expr, p_num), "AI");
+
+  /* [A = ] <unary ops> revised_call.  */
+  if (unary_preamble)
+    {
+      gcc_checking_assert (!VOID_TYPE_P (TREE_TYPE (expr)));
+      tree x_op = unary_preamble;
+      while (TREE_OPERAND (x_op, 0))
+	x_op = TREE_OPERAND (x_op, 0);
+      TREE_OPERAND (x_op, 0) = expr;
+      expr = unary_preamble;
+    }
+
+  if (!discarded)
+    expr = build2_loc (loc, expr_code, TREE_TYPE (t->var), t->var, expr);
+  t->init = expr;
+}
+
+tree
+coro_flattened_statement::flatten_await_inner (var_nest_node *t, tree aw_expr)
+{
+  location_t loc = EXPR_LOCATION (aw_expr);
+  tree var = TREE_OPERAND (aw_expr, 1);
+  /* Where the awaiter is a param or user var, there will be no computed
+     initializer, so we can skip this.
+     The awaiter will be a named var (possibly initialized from a target expr,
+     constructor or directly e.g. via an await expr or a call.  */
+  if (tree init = TREE_OPERAND (aw_expr, 2))
+    {
+      tree init_type = TREE_TYPE (init);
+      if (TREE_CODE (init) == CONSTRUCTOR)
+	{
+	  if (!VOID_TYPE_P (init_type))
+	    init = build2_loc (loc, INIT_EXPR, TREE_TYPE (var), var, init);
+	}
+      else if (TREE_CODE (init) == TARGET_EXPR)
+	{
+	/* Elide the TE, we are making an INIT of a valued var.  */
+	gcc_checking_assert (var == TREE_OPERAND (init, 0));
+	init = TARGET_EXPR_INITIAL (init);
+
+	if (TREE_CODE (init) != INIT_EXPR
+	    && !VOID_TYPE_P (init_type))
+	  init = build2_loc (loc, INIT_EXPR, TREE_TYPE (var), var, init);
+	}
+      else if (TREE_CODE (init) != INIT_EXPR)
+	init = build2_loc (loc, INIT_EXPR, TREE_TYPE (var), var, init);
+      var_nest_node *ins = new var_nest_node (var, init, t->prev, t);
+      ins->synthesized_var_p = true;
+      ins->awaiter_init_p = true;
+      tree *await_ptr;
+      hash_set<tree> visited;
+      if (cp_walk_tree (&ins->init, find_any_await, &await_ptr, &visited))
+	flatten_expression (ins);
+      TREE_OPERAND (aw_expr, 2) = NULL_TREE;
+    }
+  return aw_expr;
+}
+
+/* We split out the initialization of the await var and then check that
+   for additional await expressions.  The remaining content should not
+   contain any await expressions.  */
+
+void
+coro_flattened_statement::flatten_await (var_nest_node *t, tree expr,
+					 tree_code expr_code,
+					 tree unary_preamble,
+					 bool discarded)
+{
+  location_t loc = EXPR_LOCATION (expr);
+
+  flatten_await_inner (t, expr);
+
+  /* [A = ] <unary ops> expr.  */
+  if (unary_preamble)
+    {
+      tree x_op = unary_preamble;
+      while (TREE_OPERAND (x_op, 0))
+	x_op = TREE_OPERAND (x_op, 0);
+      TREE_OPERAND (x_op, 0) = expr;
+      expr = unary_preamble;
+    }
+
+  if (!discarded)
+    expr = build2_loc (loc, expr_code, TREE_TYPE (t->var), t->var, expr);
+  t->init = expr;
+}
+
+/* A = (OP op0 op1) =>
+   A = op0;
+   A = (OP A op1);
+
+   (OP op0 op1) =>
+   TMP = op0;
+   TMP = (OP TMP op1)
+   (DISCARD TMP).  
+
+   If we have [A = ] <unary ops> (OP 0 1) then
+   TMP = op0
+   [A = ] <unary ops> (OP TMP op1)
+*/
+
+void
+coro_flattened_statement::flatten_binary (var_nest_node *t, tree expr,
+					  tree_code expr_code,
+					  tree unary_preamble,
+					  bool discarded)
+{
+  location_t loc = EXPR_LOCATION (expr);
+  tree op0 = TREE_OPERAND (expr, 0);
+  tree op0_type = TREE_TYPE (op0);
+  bool synthetic = t->synthesized_var_p;
+  bool var_usable_as_tmp_p = t->var && expr_code == INIT_EXPR
+			     && TREE_TYPE (t->var) == op0_type;
+
+  tree *await_ptr;
+  hash_set<tree> visited;
+  if (expr_result_needs_frame_temp (op0))
+    {
+      tree var;
+      if (var_usable_as_tmp_p)
+	var = t->var;
+      else // if (TREE_CODE (first) == TARGET_EXPR) /// force promotion avoid extra tmp.
+	{
+	  char *nam = xasprintf ("_TB_%u_%u", statement_number, temp_number++);
+	  var = build_lang_decl (VAR_DECL, get_identifier (nam), op0_type);
+	  free (nam);
+	  synthetic = true;
+	}
+
+      tree init = build2_loc (loc, INIT_EXPR, op0_type, var, op0); 
+      var_nest_node *ins = new var_nest_node (var, init, t->prev, t);
+      TREE_OPERAND (expr, 0) = var;
+      ins->synthesized_var_p = synthetic;
+      if (cp_walk_tree (&op0, find_any_await, &await_ptr, &visited))
+	flatten_expression (ins);  /* Recurse into the first sub-expr...  */
+  }
+
+  /* If the second operand contains any await expressions split it out - so
+     that we can recurse into it to resolve further.  We do not need a coro-
+     frame var for this because the resulting expr will not contain any awaits
+     (so the temp can be anonymous).  */
+  tree op1 = TREE_OPERAND (expr, 1);
+  visited.empty();
+  if (cp_walk_tree (&op1, find_any_await, &await_ptr, &visited))
+    {
+      tree op1_type = TREE_TYPE (op1);
+      tree var1 = build_lang_decl (VAR_DECL, NULL_TREE, op1_type);
+      op1 = build2_loc (loc, INIT_EXPR, op1_type, var1, op1);
+      var_nest_node *ins = new var_nest_node (var1, op1, t->prev, t);
+      TREE_OPERAND (expr, 1) = var1;
+      flatten_expression (ins);  /* Recurse into the second sub-expr...  */
+    }
+
+  if (unary_preamble)
+    {
+      tree x_op = unary_preamble;
+      while (TREE_OPERAND (x_op, 0))
+	x_op = TREE_OPERAND (x_op, 0);
+      TREE_OPERAND (x_op, 0) = expr;
+      expr = unary_preamble;
+    }
+
+  if (!discarded)
+    expr = build2_loc (loc, expr_code, TREE_TYPE (t->var), t->var, expr);
+  t->init = expr;
+}
+
+void
+coro_flattened_statement::handle_call_param (var_nest_node *t,
+					     tree *p_ptr, const char *pfx)
+{
+  tree param = *p_ptr;
+  bool address_taken = false;
+  tree *replace = find_unary_preamble (param, address_taken);
+  if (replace)
+    {
+      param = *replace;
+      gcc_checking_assert (TREE_CODE (param) != CLEANUP_POINT_EXPR);
+    }
+
+  if (!expr_result_needs_frame_temp (param) && !address_taken)
+    return;
+
+  char *nam = xasprintf ("_%s_%u_%u", pfx, statement_number, temp_number++);
+  tree name = get_identifier (nam);
+  free (nam);
+  if (TREE_CODE (param) == VAR_DECL && !DECL_NAME (param))
+    {
+      /* The param is a variable, but it is a temp and address-taken - promote
+	 this to a frame copy.  */
+      DECL_NAME (param) = name;
+      return;
+    }
+
+  /* Unless we have an await in this expression, we are done.  */
+  tree *await_ptr;
+  hash_set<tree> visited;
+  if (!cp_walk_tree (&param, find_any_await, &await_ptr, &visited))
+    return;
+
+  location_t loc = EXPR_LOCATION (*p_ptr);
+  tree param_type = TREE_TYPE (param);
+  tree var;
+  tree cleanup = NULL_TREE;
+
+  if (TREE_CODE (param) == TARGET_EXPR
+      && !TARGET_EXPR_NO_ELIDE (param)
+      && !VOID_TYPE_P (TREE_TYPE (TARGET_EXPR_INITIAL (param))))
+    {
+      /* We are going to elide the target expression and re-use its var.  */
+      var = TARGET_EXPR_SLOT (param);
+      DECL_NAME (var) = name; /* Promote the temp.  */
+      cleanup = TARGET_EXPR_CLEANUP (param);
+      param = TARGET_EXPR_INITIAL (param);
+    }
+  else 
+    var = build_lang_decl (VAR_DECL, name, param_type);
+  param = build2_loc (loc, INIT_EXPR, param_type, var, param);
+  if (replace)
+    *replace = var;
+  else
+    *p_ptr = var;
+  var_nest_node *ins = new var_nest_node (var, param, t->prev, t);
+  ins->cleanup = cleanup;
+  ins->synthesized_var_p = true;
+  flatten_expression (ins);  /* Recurse into the param expression...  */
+}
+
+/* A call expression with awaits, has those in the parameters.
+
+   So A = <maybe unary preamble> func (a_expr, b_expr, c_expr, d_expr); 
+   where b_expr and d_expr are expressions like
+   b_expr = <maybe unary preamble b> b'_expr;
+   
+    - becomes:
+
+   Temp_d = d'_expr; 
+   Temp_d' = <maybe unary preamble d> Temp_d;
+   temp_b = b'_expr;
+   temp_b' = <maybe unary preamble b> temp_b;
+   A = <maybe unary preamble> func (a_expr, temp_b', c_expr, Temp_d');  */
+
+void
+coro_flattened_statement::flatten_call (var_nest_node *t, tree expr,
+					tree_code expr_code,
+					tree unary_preamble, bool discarded)
+{
+  location_t loc = EXPR_LOCATION (expr);
+
+  for (int p_num = 0; p_num < call_expr_nargs (expr); p_num++)
+    handle_call_param (t, &CALL_EXPR_ARG(expr, p_num), "CT");
+
+  /* [A = ] <unary ops> revised_call.  */
+  if (unary_preamble)
+    {
+      tree x_op = unary_preamble;
+      while (TREE_OPERAND (x_op, 0))
+	x_op = TREE_OPERAND (x_op, 0);
+      TREE_OPERAND (x_op, 0) = expr;
+      expr = unary_preamble;
+    }
+
+  if (!discarded)
+    expr = build2_loc (loc, expr_code, TREE_TYPE (t->var), t->var, expr);
+  t->init = expr;
+}
+
+/* For a cleanup expression we break out the contained expression into its
+   own context.
+
+   [A = ].. <unary ops> cleanup_expr (X) =>
+   var t = cleanup-inner [marked as such] 
+   [A = ].. <unary ops> t.
+   The debate is whether any contained temporaries should have lifetimes
+   extended to the end of the containing expression.. I suppose they should.  */
+
+void
+coro_flattened_statement::flatten_cleanup (var_nest_node *t, tree expr,
+					   tree_code expr_code,
+					   tree unary_preamble,
+					   bool discarded)
+{
+  location_t loc = EXPR_LOCATION (expr);
+  tree expr_type = TREE_TYPE (expr);
+  expr = TREE_OPERAND (expr, 0);
+  gcc_checking_assert (same_type_p (expr_type, TREE_TYPE (expr)));
+  tree tmp = build_lang_decl (VAR_DECL, NULL_TREE, expr_type);
+
+  /* expr_type tmp = cleanup-inner.  */
+  tree init = build2_loc (loc, INIT_EXPR, expr_type, tmp, expr);
+  var_nest_node *ins = new var_nest_node (tmp, init, NULL, NULL);
+  t->then_cl = ins;
+  t->cleanup_head_p = true;
+  flatten_expression (t->then_cl);  /* Recurse into the sub-expr...  */
+
+  /* [A = ] <unary ops> tmp.  */
+  if (unary_preamble)
+    {
+      tree x_op = unary_preamble;
+      while (TREE_OPERAND (x_op, 0))
+	x_op = TREE_OPERAND (x_op, 0);
+      TREE_OPERAND (x_op, 0) = tmp;
+      expr = unary_preamble;
+    }
+  else
+    expr = tmp;
+  if (!discarded)
+    expr = build2_loc (loc, expr_code, TREE_TYPE (t->var), t->var, tmp);
+  t->init = expr;
+}
+
+/* Compiler-generated compound expressions can produce a temporary in the
+   first arm that is used in the second (user-defined compound expressions
+   cannot do this).  */
+void
+coro_flattened_statement::flatten_compound (var_nest_node *t, tree expr,
+					   tree_code expr_code,
+					   tree unary_preamble,
+					   bool discarded)
+{
+  location_t loc = EXPR_LOCATION (expr);
+  tree first = TREE_OPERAND (expr, 0);
+  tree var = NULL_TREE;
+  tree cleanup = NULL_TREE;
+  /* 'Promote' this temporary to preserve it in the coro frame, giving it a 
+      name achieves this.  */
+  if (TREE_CODE (first) == TARGET_EXPR)
+    {
+      /* We are going to elide the target expression in the generation of the
+	 new variable: it is an INIT_EXPR, of a value.
+	 NOTE: we *must* use the target expression var here, since that is
+	 potentially reused in the second arm of the compound.  */
+      char *nam = xasprintf ("_TE_%u_%u", statement_number, temp_number++);
+      tree tmp_name = get_identifier (nam);
+      free (nam);
+      var = TARGET_EXPR_SLOT (first);
+      DECL_NAME (var) = tmp_name;
+      cleanup = TARGET_EXPR_CLEANUP (first);
+      first = TARGET_EXPR_INITIAL (first);
+      first = build2_loc (loc, INIT_EXPR, TREE_TYPE (var), var, first);
+    }
+  var_nest_node *ins = new var_nest_node (var, first, t->prev, t);
+  ins->synthesized_var_p = (var != NULL_TREE);
+  ins->cleanup = cleanup;
+  tree *await_ptr;
+  hash_set<tree> visited;
+  if (cp_walk_tree (&ins->init, find_any_await, &await_ptr, &visited))
+    flatten_expression (ins);
+
+  /* The second operand of the compound becomes the new expression.  */
+  tree second = TREE_OPERAND (expr, 1);
+  if (unary_preamble)
+    {
+      tree x_op = unary_preamble;
+      while (TREE_OPERAND (x_op, 0))
+	x_op = TREE_OPERAND (x_op, 0);
+      TREE_OPERAND (x_op, 0) = second;
+      second = unary_preamble;
+    }
+
+  if (!discarded)
+    second = build2_loc (loc, expr_code, TREE_TYPE (t->var), t->var, second);
+  t->init = second;
+
+  visited.empty ();
+  if (cp_walk_tree (&t->init, find_any_await, &await_ptr, &visited))
+    flatten_expression (t);
+}
+
+/* We do not actually flatten this, just ensure that any contained awaiters
+   are initialized before it is called.  */
+
+void
+coro_flattened_statement::flatten_constructor (var_nest_node *t, tree expr,
+					       tree_code expr_code,
+					       tree unary_preamble,
+					       bool discarded)
+{
+  gcc_checking_assert (expr_code == INIT_EXPR && !discarded);
+
+  location_t loc = EXPR_LOCATION (expr);
+  tree index, val;
+  unsigned scratch_idx = 0;
+  tree *await_ptr;
+  hash_set<tree> visited;
+  FOR_EACH_CONSTRUCTOR_ELT (CONSTRUCTOR_ELTS (expr), scratch_idx, index, val)
+    {
+      visited.empty ();
+      if (!cp_walk_tree (&val, find_any_await, &await_ptr, &visited))
+	continue;
+      flatten_await_inner (t, *await_ptr);
+    }
+
+  /* Reassemble the original.  */
+  if (unary_preamble)
+    {
+      tree x_op = unary_preamble;
+      while (TREE_OPERAND (x_op, 0))
+	x_op = TREE_OPERAND (x_op, 0);
+      TREE_OPERAND (x_op, 0) = expr;
+      expr = unary_preamble;
+    }
+
+  if (!discarded)
+    expr = build2_loc (loc, expr_code, TREE_TYPE (t->var), t->var, expr);
+  t->init = expr;
+}
+
+/* We can enter this in two states.
+
+   Firstly with something like [A = ]<unary ops> tgt_expr
+   We replace this with:
+	target_expr (which we then process as below).
+	[A = ]<unary ops> target_expr_var
+
+  Secondly, a 'bare' target_expr, which is a var and the TE that initializes
+  it.  In this context, the var will not be anonymous, it is being 'promoted'
+  to a frame variable.  We now figure out what sequence should be used to
+  perform the initialize (and recurse into that).  */
+
+void
+coro_flattened_statement::flatten_target (var_nest_node *t, tree expr,
+					  tree_code expr_code,
+					  tree unary_preamble,
+					  bool discarded, bool addr_taken)
+{
+  location_t loc = EXPR_LOCATION (expr);
+  tree expr_type = TREE_TYPE (expr);
+  tree var_type = t->var ? TREE_TYPE (t->var) : NULL_TREE;
+
+  /* If we can elide this target expr, then do so.  */
+  tree init = TARGET_EXPR_INITIAL (expr);
+  tree init_type = TREE_TYPE (init);
+  if (init
+      && expr_code == INIT_EXPR
+      && !unary_preamble
+      && !TARGET_EXPR_NO_ELIDE (expr)
+      && !VOID_TYPE_P (init_type))
+    {
+      gcc_checking_assert (t->var);
+      t->init = build2_loc (loc, INIT_EXPR, var_type, t->var, init);
+      flatten_expression (t);
+      return;
+    }
+
+  /* [A = ] <unary ops> tgt_expr.  */
+  gcc_checking_assert (!addr_taken || unary_preamble);
+  tree var = TARGET_EXPR_SLOT (expr);
+  if (unary_preamble || addr_taken)
+    {
+      char *nam = xasprintf ("_TT_%u_%u", statement_number, temp_number++);
+      tree name = get_identifier (nam);
+      free (nam);
+
+      /* Maybe we can use the TE var directly as the frame copy.  */
+      if (!VOID_TYPE_P (init_type) && !TARGET_EXPR_NO_ELIDE (expr))
+	/* Build name_TE_var = init  */
+	DECL_NAME (var) = name;
+      else
+	/* Build named_tmp = TE. */
+	var = build_lang_decl (VAR_DECL, name, expr_type);
+      expr = build2_loc (loc, INIT_EXPR, TREE_TYPE (var), var, init);
+
+     /* A = <unary ops> (temp).  */
+      var_nest_node *ins = new var_nest_node (var, expr, t->prev, t);
+      ins->synthesized_var_p = true;
+
+      /* There must be an await expression in here, so recurse with a 'bare'
+	 target expr.  */
+      flatten_expression (ins);
+      tree x_op = unary_preamble;
+      while (TREE_OPERAND (x_op, 0))
+	x_op = TREE_OPERAND (x_op, 0);
+      TREE_OPERAND (x_op, 0) = var;
+      expr = unary_preamble;
+      if (!discarded)
+	expr = build2_loc (loc, expr_code, TREE_TYPE (t->var), t->var, expr);
+      t->init = expr;
+      return; /* we've processed the await(s) above.  */
+    }
+
+  /* The initializer contains at least on await expression, we have to handle
+     those here, individually (since we can not decompose the target expr any
+     further).  */
+  switch (TREE_CODE (init))
+    {
+      case AGGR_INIT_EXPR:
+	for (int p_num = 0; p_num < aggr_init_expr_nargs (init); p_num++)
+	  handle_call_param (t, &AGGR_INIT_EXPR_ARG (init, p_num), "TA");
+	break;
+      case CALL_EXPR:
+	/* Ignore the addr-expr on the function, but check the parms.  */
+	for (int p_num = 0; p_num < call_expr_nargs (init); p_num++)
+	  handle_call_param (t, &CALL_EXPR_ARG (init, p_num), "TC");
+	break;
+      case CO_AWAIT_EXPR:
+	flatten_await_inner (t, init);
+	break;
+      default:
+	break;
+    }
+
+  /* We can have X = target_expr where we can not elide the init.  */
+  if (!discarded)
+    expr = build2_loc (loc, expr_code, TREE_TYPE (t->var), t->var, expr);
+  t->init = expr;
+ }
+
+/* If either arm of a ternary contains an await expression, we will need
+   to replace the ternary expression with an if-then-else.
+
+   Any assignment present is transfered to the then / else arms (accounting
+   for void expressions which are throws).  At this stage, we leave the
+   ternary tree in place, but both expressions are replaced by NULL_TREE
+   leaving only the condition.  The expressions representing the then and
+   else clause are flattened further as required.
+
+   so A = <maybe unary preamble> cond ? then : else ;
+   where the then or else clause contains an await expr becomes;
+
+   bool t = cond; // IFF cond contains an await expr.
+   t ? NULL : NULL;
+   then_cl --> A = <maybe unary preamble> (flattened) then;
+   else_cl --> A = <maybe unary preamble> (flattened) else;
+
+   If the only await expr is in the condition:
+   bool t = cond; // IFF cond contains an await expr.
+   A = t ? then : else ;
+*/
+
+void
+coro_flattened_statement::flatten_ternary (var_nest_node *t, tree expr,
+					   tree_code expr_code,
+					   tree unary_preamble,
+					   bool discarded)
+{
+  tree *await_ptr;
+  hash_set<tree> visited;
+  tree condition = COND_EXPR_COND (expr);
+  location_t loc = EXPR_LOCATION (condition);
+
+  /* Replace any condition containing an await expression with a boolean
+     var initialized from that expression.  */
+  if (cp_walk_tree (&condition, find_any_await, &await_ptr, &visited))
+    {
+      char *nam = xasprintf ("_CE_%u_%u", statement_number, temp_number++);
+      tree newvar = build_lang_decl (VAR_DECL, get_identifier (nam),
+					   boolean_type_node);
+      free (nam);
+      if (TREE_CODE (condition) == CLEANUP_POINT_EXPR)
+	condition = TREE_OPERAND (expr, 0);
+      condition = build2_loc (loc, INIT_EXPR, boolean_type_node,
+			      newvar, condition); 
+      var_nest_node *ins = new var_nest_node (newvar, condition, t->prev, t);
+      ins->synthesized_var_p = true;
+      COND_EXPR_COND (expr) = newvar;
+      flatten_expression (ins);
+    }
+
+  /* Determine if the ternary must be replaced with an if-then-else.  */
+  visited.empty();
+  bool then_aw = cp_walk_tree (&COND_EXPR_THEN (expr), find_any_await,
+				     &await_ptr, &visited);
+  visited.empty();
+  bool else_aw = cp_walk_tree (&COND_EXPR_ELSE (expr), find_any_await,
+				     &await_ptr, &visited);
+
+  tree res_type = discarded ? void_type_node : TREE_TYPE (t->var);
+  if (then_aw || else_aw)
+    {
+      /* The ternary expression will be discarded (replaced by an if).  We
+	 transfer any unary preambles to the then/else arms and discard the
+	 output of the ternary itself, unless the expression is void indicating
+	 a throw.  */
+      tree then_ = COND_EXPR_THEN (expr);
+      bool apply_uops_then = !VOID_TYPE_P (TREE_TYPE (then_)) ? true : false;
+      tree else_ = COND_EXPR_ELSE (expr);
+      bool apply_uops_else = !VOID_TYPE_P (TREE_TYPE (else_)) ? true : false;
+
+      /* ... apply any unary preamble we kept to each arm.  */
+      if (unary_preamble && (apply_uops_then || apply_uops_else))
+	{
+	  /* We need to duplicate the trees if they are needed in both arms of
+	     the result.  */
+	  tree t_op = apply_uops_else && apply_uops_then
+		      ? copy_node (unary_preamble)
+		      : unary_preamble;
+	  if (apply_uops_then)
+	    {
+	      tree x_op = t_op;
+	      while (TREE_OPERAND (x_op, 0))
+		x_op = TREE_OPERAND (x_op, 0);
+	      TREE_OPERAND (x_op, 0) = then_;
+	      then_ = t_op;
+	    }
+	  if (apply_uops_else)
+	    {
+	      tree x_op = unary_preamble;
+	      while (TREE_OPERAND (x_op, 0))
+		x_op = TREE_OPERAND (x_op, 0);
+	      TREE_OPERAND (x_op, 0) = else_;
+	      else_ = unary_preamble;
+	    }
+	}
+
+      if (!discarded && apply_uops_then)
+	{
+	  loc = EXPR_LOCATION (then_);
+	  then_ = build2_loc (loc, expr_code, res_type, t->var, then_);
+	}
+
+      if (!discarded && apply_uops_else)
+	{
+	  loc = EXPR_LOCATION (else_);
+	  else_ = build2_loc (loc, expr_code, res_type, t->var, else_);
+	}
+
+      var_nest_node *then_cl = new var_nest_node (t->var, then_, NULL, NULL);
+      t->then_cl =  then_cl;
+      if (then_aw)
+	flatten_expression (then_cl);
+      COND_EXPR_THEN (expr) = NULL_TREE;
+
+      var_nest_node *else_cl = new var_nest_node (t->var, else_, NULL, NULL);
+      t->else_cl =  else_cl;
+      if (else_aw)
+	flatten_expression (else_cl);
+      COND_EXPR_ELSE (expr) = NULL_TREE;
+    }
+  else
+    {
+      /* The only replacement is the condition, so that we preserve the ternary
+	 and any unary preamble.  */
+      if (unary_preamble)
+	{
+	  tree x_op = unary_preamble;
+	  while (TREE_OPERAND (x_op, 0))
+	    x_op = TREE_OPERAND (x_op, 0);
+	  TREE_OPERAND (x_op, 0) = expr;
+	  expr = unary_preamble;
+	}
+      if (!discarded)
+	expr = build2_loc (loc, expr_code, res_type, t->var, expr);
+    }
+  t->init = expr;
+}
+
+/* [A = ] <unary ops> Truth and/or IF =>
+   bool x = eval operand 0;
+   if (orif)
+     x = !x;
+   if (x) then
+     x = eval operand 1
+   [A = ] <unary ops> x.
+
+  Without unary ops :
+  A = eval operand 0;
+  if (orif)
+    A = !A;
+  if (A) then
+    A = eval operand 1
+
+*/
+
+void
+coro_flattened_statement::flatten_truth_if (var_nest_node *t, tree expr,
+					    tree_code expr_code,
+					    tree unary_preamble,
+					    bool discarded)
+{
+  tree expr_type = TREE_TYPE (expr);
+  location_t loc = EXPR_LOCATION (expr);
+  tree first = TREE_OPERAND (expr, 0);
+  bool synthetic = t->synthesized_var_p;
+  bool is_or = TREE_CODE (expr) == TRUTH_ORIF_EXPR;
+
+  tree var;
+  if (discarded || unary_preamble)
+    {
+      char *nam = xasprintf ("_TI_%u_%u", statement_number, temp_number++);
+      var = build_lang_decl (VAR_DECL, get_identifier (nam), expr_type);
+      free (nam);
+      synthetic = true;
+    }
+  else
+    var = t->var;
+
+  /* Build a condition for an if then expression from operand 0.
+     The if will be taken if the condition is true (and) or false (or).  */
+  //gcc_checking_assert (TREE_TYPE (expr) == TREE_TYPE (var));
+  tree init = build2_loc (loc, INIT_EXPR, expr_type, var, first);
+  var_nest_node *ins = new var_nest_node (var, init, t->prev, t);
+  ins->synthesized_var_p = synthetic;
+  tree *await_ptr;
+  hash_set<tree> visited;
+  if (cp_walk_tree (&ins->init, find_any_await, &await_ptr, &visited))
+    flatten_expression (ins);  /* Recurse into the first sub-expr...  */
+
+  /* placeholder COND_EXPR that will be lowered to if-then.  */
+  init = var;
+  if (is_or)
+    init = build1_loc (loc, TRUTH_NOT_EXPR, expr_type, var);
+  init = build3_loc (loc, COND_EXPR, expr_type, init, NULL_TREE, NULL_TREE);
+  /* Now build the then clause.  */
+  tree then_ = build2_loc (loc, INIT_EXPR, expr_type, var, TREE_OPERAND (expr, 1));
+  var_nest_node *then_cl = new var_nest_node (var, then_, NULL, NULL);
+
+  visited.empty ();
+  if (cp_walk_tree (&then_cl->init, find_any_await, &await_ptr, &visited))
+    flatten_expression (then_cl);
+
+  /* Neither the replacement cond_expr, nor the unary(var) expression can
+     contain await exprs, so no need to flatten them further.
+     It does not matter whether the result of these operations sets a var
+     or was discarded at this point if we have no preamble.*/
+  if (unary_preamble)
+    {
+      /* If we have a preamble then do:
+	 ... insert if-then which sets x ... 
+	 [A = ] <unary ops> x.  */
+      ins = new var_nest_node (NULL_TREE, init, t->prev, t);
+      ins->then_cl = then_cl;
+      ins->synthesized_var_p = synthetic;
+      /* <unary ops> x.  */
+      tree x_op = unary_preamble;
+      while (TREE_OPERAND (x_op, 0))
+	x_op = TREE_OPERAND (x_op, 0);
+      TREE_OPERAND (x_op, 0) = var;
+      if (!discarded)
+	init = build2_loc (loc, expr_code, expr_type, t->var, unary_preamble);
+      else
+	init = unary_preamble;
+    }
+  else
+    t->then_cl = then_cl;
+  t->init = init;
+}
+
+void
+coro_flattened_statement::flatten_expression (var_nest_node *t)
+{
+  tree expr = t->init;
+  tree_code expr_code = TREE_CODE (expr);
+  location_t loc = EXPR_LOCATION (expr);
+  bool discarded = true;
+
+  if (expr_code == INIT_EXPR || expr_code == MODIFY_EXPR)
+    {
+      /* This represents the RHS, it might include view-convert exprs.  */
+      t->var = TREE_OPERAND (expr, 0);
+      expr = TREE_OPERAND (expr, 1);
+      discarded = false;
+    }
+
+  /* We do not need to act specially for most unary ops, so skip those and
+     keep to one side, split at the first one we need to handle (there must
+     be at least one, to have an await present).  */
+  tree unary_preamble = expr;
+  bool address_taken = false;
+
+  tree *replace = find_unary_preamble (unary_preamble, address_taken);
+  if (replace)
+    {
+      expr = *replace;
+      *replace = NULL_TREE;
+    }
+  else
+    unary_preamble = NULL_TREE;
+
+  switch (TREE_CODE (expr))
+    {
+    case AGGR_INIT_EXPR:
+      flatten_aggr_init (t, expr, expr_code, unary_preamble, discarded);
+      break;
+    case CALL_EXPR:
+      flatten_call (t, expr, expr_code, unary_preamble, discarded);
+      break;
+    case CLEANUP_POINT_EXPR:
+      flatten_cleanup (t, expr, expr_code, unary_preamble, discarded);
+      break;
+    case COMPOUND_EXPR:
+      flatten_compound (t, expr, expr_code, unary_preamble, discarded);
+      break;
+    case COND_EXPR:
+      flatten_ternary (t, expr, expr_code, unary_preamble, discarded);
+      break;
+    case CONSTRUCTOR:
+      flatten_constructor (t, expr, expr_code, unary_preamble, discarded);
+      break;
+    case CO_YIELD_EXPR:
+      /* co_yield is syntactic sugar for co_await promise.yield_value ();
+	 drop the co_yield now.  */
+      expr = TREE_OPERAND (expr, 1);
+      /* FALLTHROUGH */
+    case CO_AWAIT_EXPR:
+      flatten_await (t, expr, expr_code, unary_preamble, discarded);
+      break;
+    case TARGET_EXPR:
+      flatten_target (t, expr, expr_code, unary_preamble,
+		      discarded, address_taken);
+      break;
+    case TRUTH_ANDIF_EXPR:
+    case TRUTH_ORIF_EXPR:
+      flatten_truth_if (t, expr, expr_code, unary_preamble, discarded);
+      break;
+    default:
+      if (BINARY_CLASS_P (expr)
+	  || COMPARISON_CLASS_P (expr)
+	  || (EXPRESSION_CLASS_P (expr)
+	      && TREE_CODE_LENGTH (TREE_CODE (expr)) == 2))
+	{
+	  flatten_binary (t, expr, expr_code, unary_preamble, discarded);
+	  break;
+	}
+      else if (unary_preamble)
+	{
+	  /* Undo the split.  */
+	  tree x_op = unary_preamble;
+	  while (TREE_OPERAND (x_op, 0))
+	    x_op = TREE_OPERAND (x_op, 0);
+	  TREE_OPERAND (x_op, 0) = expr;
+	  expr = unary_preamble;
+	}
+      if (!discarded)
+	expr = build2_loc (loc, expr_code, TREE_TYPE (t->var), t->var, expr);
+      t->init = expr;
+      break;
+    }
+}
+
+void coro_flattened_statement::untree ()
+{
+  flatten_expression (tail);
+  promote_temporaries_list (tail);
+  promote_list (tail);
+  head = unwind (tail);
+}
+
+/* Handle the top level of a statement, figuring out how to structure the
+   flattened replacement.  */
+static tree
+process_statement_with_awaits (tree *stmt, susp_frame_data *awpts)
+{
+  tree expr = *stmt;
+  bool had_cleanup = TREE_CODE (expr) == CLEANUP_POINT_EXPR;
+  if (had_cleanup)
+    expr = TREE_OPERAND (expr, 0);
+  /* FIXME: do this manually and keep any wrapped location.  */
+  STRIP_NOPS (expr);
+  if (TREE_CODE (expr) == EXPR_STMT)
+    expr = EXPR_STMT_EXPR (expr);
+
+  /* lose any (void) cast.  */
+  if (CONVERT_EXPR_P (expr) && VOID_TYPE_P (TREE_TYPE (expr)))
+    expr = TREE_OPERAND (expr, 0);
+
+  coro_flattened_statement S (expr, awpts->aw_statement++);
+  S.untree ();
+  S.build_flattened_statement ();
+
+  tree s_block = NULL_TREE;
+  if (!awpts->block_stack->is_empty ())
+    s_block = awpts->block_stack->last ();
+  return S.get_flattened_statement (s_block);
 }
 
 /* Helper to build and add if (!cond) break;  */
@@ -3341,6 +4493,9 @@ static void
 coro_build_add_if_not_cond_break (tree cond)
 {
   tree if_stmt = begin_if_stmt ();
+  /* finish_if_stmt_cond will add this as needed.  */
+  if (TREE_CODE (cond) == CLEANUP_POINT_EXPR)
+    cond = TREE_OPERAND (cond, 0);
   tree invert = build1 (TRUTH_NOT_EXPR, boolean_type_node, cond);
   finish_if_stmt_cond (invert, if_stmt);
   finish_break_stmt ();
@@ -3355,7 +4510,7 @@ replace_continue (tree *stmt, int *do_subtree, void *d)
   tree expr = *stmt;
   if (TREE_CODE (expr) == CLEANUP_POINT_EXPR)
     expr = TREE_OPERAND (expr, 0);
-  if (CONVERT_EXPR_P (expr) && VOID_TYPE_P (expr))
+  if (CONVERT_EXPR_P (expr) && VOID_TYPE_P (TREE_TYPE (expr)))
     expr = TREE_OPERAND (expr, 0);
   STRIP_NOPS (expr);
   if (!STATEMENT_CLASS_P (expr))
@@ -3411,10 +4566,12 @@ await_statement_walker (tree *stmt, int *do_subtree, void *d)
 	 into the correct scope, so keep a note of the current block scope.  */
       tree blk = BIND_EXPR_BLOCK (*stmt);
       vec_safe_push (awpts->block_stack, blk);
+      awpts->bind_depth++;
       res = cp_walk_tree (&BIND_EXPR_BODY (*stmt), await_statement_walker,
 			  d, NULL);
       awpts->block_stack->pop ();
       awpts->bind_stack->pop ();
+      awpts->bind_depth--;
       *do_subtree = 0; /* Done subtrees.  */
       return res;
     }
@@ -3713,30 +4870,11 @@ await_statement_walker (tree *stmt, int *do_subtree, void *d)
       if (!(cp_walk_tree (stmt, find_any_await, &await_ptr, &visited)))
 	return NULL_TREE; /* Nothing special to do here.  */
 
-      visited.empty ();
-      awpts->saw_awaits = 0;
-      hash_set<tree> truth_aoif_to_expand;
-      awpts->truth_aoif_to_expand = &truth_aoif_to_expand;
-      awpts->needs_truth_if_exp = false;
-      awpts->has_awaiter_init = false;
-      if ((res = cp_walk_tree (stmt, analyze_expression_awaits, d, &visited)))
-	return res;
+      *stmt = process_statement_with_awaits (stmt, awpts);
+      awpts->bind_depth--;
       *do_subtree = 0; /* Done subtrees.  */
-      if (!awpts->saw_awaits)
-	return NULL_TREE; /* Nothing special to do here.  */
-
-      if (awpts->needs_truth_if_exp)
-	{
-	  /* If a truth-and/or-if expression has an await expression in the
-	     conditionally-taken branch, then it must be rewritten into a
-	     regular conditional.  */
-	  truth_if_transform xf = {stmt, NULL_TREE, &truth_aoif_to_expand};
-	  if ((res = cp_walk_tree (stmt, expand_one_truth_if, &xf, NULL)))
-	    return res;
-	}
-      /* Process this statement, which contains at least one await expression
-	 to 'promote' temporary values to a coroutine frame slot.  */
-      return maybe_promote_temps (stmt, d);
+      visited.empty ();
+      return cp_walk_tree (stmt, register_awaits, d, &visited);
     }
   /* Continue recursion, if needed.  */
   return res;
@@ -3969,7 +5107,9 @@ register_local_var_uses (tree *stmt, int *do_subtree, void *d)
 	}
       lvd->bind_indx++;
       lvd->nest_depth++;
-      cp_walk_tree (&BIND_EXPR_BODY (*stmt), register_local_var_uses, d, NULL);
+      hash_set<tree> visited;
+      cp_walk_tree (&BIND_EXPR_BODY (*stmt), register_local_var_uses,
+		    d, &visited);
       *do_subtree = 0; /* We've done this.  */
       lvd->nest_depth--;
     }
@@ -4420,7 +5560,7 @@ morph_fn_to_coro (tree orig, tree *resumer, tree *destroyer)
     = build_function_type_list (void_type_node, coro_frame_ptr, NULL_TREE);
   tree act_des_fn_ptr = build_pointer_type (act_des_fn_type);
 
-  /* Declare the actor and destroyer function.  */
+  /* Forward-declare the actor and destroyer function.  */
   tree actor = coro_build_actor_or_destroy_function (orig, act_des_fn_type,
 						     coro_frame_ptr, true);
   tree destroy = coro_build_actor_or_destroy_function (orig, act_des_fn_type,
@@ -4436,6 +5576,7 @@ morph_fn_to_coro (tree orig, tree *resumer, tree *destroyer)
   fnbody = coro_rewrite_function_body (fn_start, fnbody, orig, param_uses,
 				       act_des_fn_ptr,
 				       resume_idx_var, fs_label);
+  DECL_CONTEXT (fs_label) = actor;
   /* Build our dummy coro frame layout.  */
   coro_frame_type = begin_class_definition (coro_frame_type);
 
@@ -4451,7 +5592,7 @@ morph_fn_to_coro (tree orig, tree *resumer, tree *destroyer)
      to promote any temporaries that are captured by reference (to regular
      vars) they will get added to the coro frame along with other locals.  */
   susp_frame_data body_aw_points
-    = {&field_list, handle_type, fs_label, NULL, NULL, 0, 0,
+    = {&field_list, handle_type, fs_label, actor, NULL, NULL, 0, 0, 0, 0,
        hash_set<tree> (), NULL, NULL, 0, false, false, false};
   body_aw_points.block_stack = make_tree_vector ();
   body_aw_points.bind_stack = make_tree_vector ();
@@ -4902,8 +6043,6 @@ morph_fn_to_coro (tree orig, tree *resumer, tree *destroyer)
 	r = build_special_member_call (p, complete_ctor_identifier, NULL,
 				       promise_type, LOOKUP_NORMAL,
 				       tf_warning_or_error);
-
-      r = coro_build_cvt_void_expr_stmt (r, fn_start);
       finish_expr_stmt (r);
 
       r = build_modify_expr (fn_start, coro_promise_live, boolean_type_node,
