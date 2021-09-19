@@ -24,6 +24,19 @@ libemutls_w.a: emutls_s.o
 	$(AR_CREATE_FOR_TARGET) $@ $<
 	$(RANLIB_FOR_TARGET) $@
 
+# Make emutls weak so that we can deal with -static-libgcc, override the
+# hidden visibility when this is present in libgcc_eh.
+emutls.o: HOST_LIBGCC2_CFLAGS += \
+  -DEMUTLS_ATTR='__attribute__((__weak__,__visibility__("default")))'
+emutls_s.o: HOST_LIBGCC2_CFLAGS += \
+  -DEMUTLS_ATTR='__attribute__((__weak__,__visibility__("default")))'
+
+# Make the emutls crt as a convenience lib so that it can be linked
+# optionally, use the shared version so that we can link with DSO.
+libemutls_w.a: emutls_s.o
+	$(AR_CREATE_FOR_TARGET) $@ $<
+	$(RANLIB_FOR_TARGET) $@
+
 # Patch to __Unwind_Find_Enclosing_Function for Darwin10.
 # This needs to be built for darwin10, regardless of the current platform
 # version.
