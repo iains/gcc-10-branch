@@ -6279,9 +6279,23 @@ fi
 # Check whether --enable-host-shared was given.
 if test "${enable_host_shared+set}" = set; then :
   enableval=$enable_host_shared; host_shared=$enableval
+ case $host in
+   x86_64-*-darwin* | aarch64-*-darwin*)
+     if test x$host_shared != xyes ; then
+       # PIC is the default, and actually cannot be switched off.
+       { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: PIC code is required for the configured target, host-shared setting ignored" >&5
+$as_echo "$as_me: WARNING: PIC code is required for the configured target, host-shared setting ignored" >&2;}
+       host_shared=yes
+     fi ;;
+  *) ;;
+ esac
 else
-  host_shared=no
+  case $host in
+  x86_64-*-darwin* | aarch64-*-darwin*) host_shared=yes ;;
+  *) host_shared=no ;;
+ esac
 fi
+
 
 
 
