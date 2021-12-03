@@ -19754,7 +19754,7 @@ rs6000_ms_bitfield_layout_p (const_tree record_type)
 /* A get_unnamed_section callback, used for switching to toc_section.  */
 
 static void
-rs6000_elf_output_toc_section_asm_op (const void *data ATTRIBUTE_UNUSED)
+rs6000_elf_output_toc_section_asm_op (const char *data ATTRIBUTE_UNUSED)
 {
   if ((DEFAULT_ABI == ABI_AIX || DEFAULT_ABI == ABI_ELFv2)
       && TARGET_MINIMAL_TOC)
@@ -20458,7 +20458,7 @@ rs6000_xcoff_asm_globalize_label (FILE *stream, const char *name)
    points to the section string variable.  */
 
 static void
-rs6000_xcoff_output_readonly_section_asm_op (const void *directive)
+rs6000_xcoff_output_readonly_section_asm_op (const char *directive)
 {
   fprintf (asm_out_file, "\t.csect %s[RO],%s\n",
 	   *(const char *const *) directive,
@@ -20468,7 +20468,7 @@ rs6000_xcoff_output_readonly_section_asm_op (const void *directive)
 /* Likewise for read-write sections.  */
 
 static void
-rs6000_xcoff_output_readwrite_section_asm_op (const void *directive)
+rs6000_xcoff_output_readwrite_section_asm_op (const char *directive)
 {
   fprintf (asm_out_file, "\t.csect %s[RW],%s\n",
 	   *(const char *const *) directive,
@@ -20476,7 +20476,7 @@ rs6000_xcoff_output_readwrite_section_asm_op (const void *directive)
 }
 
 static void
-rs6000_xcoff_output_tls_section_asm_op (const void *directive)
+rs6000_xcoff_output_tls_section_asm_op (const char *directive)
 {
   fprintf (asm_out_file, "\t.csect %s[TL],%s\n",
 	   *(const char *const *) directive,
@@ -20486,7 +20486,7 @@ rs6000_xcoff_output_tls_section_asm_op (const void *directive)
 /* A get_unnamed_section callback, used for switching to toc_section.  */
 
 static void
-rs6000_xcoff_output_toc_section_asm_op (const void *data ATTRIBUTE_UNUSED)
+rs6000_xcoff_output_toc_section_asm_op (const char *data ATTRIBUTE_UNUSED)
 {
   if (TARGET_MINIMAL_TOC)
     {
