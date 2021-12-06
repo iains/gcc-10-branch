@@ -495,6 +495,8 @@ enum aarch64_builtins
   AARCH64_MEMTAG_BUILTIN_END,
   /* OS-specific */
   AARCH64_BUILTIN_CFSTRING,
+  AARCH64_BUILTIN_HUGE_VALQ,
+  AARCH64_BUILTIN_INFQ,
   AARCH64_BUILTIN_MAX
 };
 
@@ -610,6 +612,9 @@ tree aarch64_fp16_ptr_type_node = NULL_TREE;
 /* Back-end node type for brain float (bfloat) types.  */
 tree aarch64_bf16_type_node = NULL_TREE;
 tree aarch64_bf16_ptr_type_node = NULL_TREE;
+
+/* Pointer to __float128 on Mach-O, where the 128b float is not long double.  */
+tree aarch64_float128_ptr_type_node = NULL_TREE;
 
 /* Wrapper around add_builtin_function.  NAME is the name of the built-in
    function, TYPE is the function type, and CODE is the function subcode
@@ -1127,6 +1132,40 @@ aarch64_init_bf16_types (void)
   aarch64_bf16_ptr_type_node = build_pointer_type (aarch64_bf16_type_node);
 }
 
+/* Initialize the backend REAL_TYPE type supporting __float128 on Mach-O,
+   as well as the related built-ins.  */
+static void
+aarch64_init_float128_types (void)
+{
+  tree ftype, fndecl;
+
+  /* Populate the float128 node if it is not already done so that the FEs
+     know it is available.  */
+  if (float128_type_node == NULL_TREE)
+    {
+      float128_type_node = make_node (REAL_TYPE);
+      TYPE_PRECISION (float128_type_node) = 128;
+      SET_TYPE_MODE (float128_type_node, TFmode);
+      layout_type (float128_type_node);
+    }
+
+  lang_hooks.types.register_builtin_type (float128_type_node, "__float128");
+  aarch64_float128_ptr_type_node = build_pointer_type (float128_type_node);
+
+  ftype = build_function_type_list (float128_type_node, NULL_TREE);
+
+  fndecl = aarch64_general_add_builtin ("__builtin_huge_valq", ftype,
+					AARCH64_BUILTIN_HUGE_VALQ);
+  TREE_READONLY (fndecl) = 1;
+  aarch64_builtin_decls[AARCH64_BUILTIN_HUGE_VALQ] = fndecl;
+
+  fndecl = aarch64_general_add_builtin ("__builtin_infq", ftype,
+					AARCH64_BUILTIN_INFQ);
+  TREE_READONLY (fndecl) = 1;
+  aarch64_builtin_decls[AARCH64_BUILTIN_INFQ] = fndecl;
+}
+
+
 /* Pointer authentication builtins that will become NOP on legacy platform.
    Currently, these builtins are for internal use only (libgcc EH unwinder).  */
 
@@ -1282,8 +1321,9 @@ aarch64_general_init_builtins (void)
 				   AARCH64_BUILTIN_SET_FPSR);
 
   aarch64_init_fp16_types ();
-
   aarch64_init_bf16_types ();
+  if (TARGET_MACHO)
+    aarch64_init_float128_types ();
 
   if (TARGET_SIMD)
     aarch64_init_simd_builtins ();
@@ -2184,6 +2224,15 @@ aarch64_general_fold_builtin (unsigned int fcode, tree type,
       VAR1 (UNOP, floatv4si, 2, v4sf)
       VAR1 (UNOP, floatv2di, 2, v2df)
 	return fold_build1 (FLOAT_EXPR, type, args[0]);
+      case AARCH64_BUILTIN_HUGE_VALQ:
+      case AARCH64_BUILTIN_INFQ:
+	{
+	  gcc_assert (n_args == 0);
+	  REAL_VALUE_TYPE inf;
+	  real_inf (&inf);
+	  return build_real (type, inf);
+	}
+	break;
       default:
 	break;
     }
