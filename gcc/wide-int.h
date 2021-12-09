@@ -3336,7 +3336,7 @@ gt_pch_nx (generic_wide_int <T> *)
 
 template<typename T>
 void
-gt_pch_nx (generic_wide_int <T> *, void (*) (void *, void *), void *)
+gt_pch_nx (generic_wide_int <T> *, void (*) (void *, void *, void *), void *)
 {
 }
 
@@ -3354,7 +3354,7 @@ gt_pch_nx (trailing_wide_ints <N> *)
 
 template<int N>
 void
-gt_pch_nx (trailing_wide_ints <N> *, void (*) (void *, void *), void *)
+gt_pch_nx (trailing_wide_ints <N> *, void (*) (void *, void *, void *), void *)
 {
 }
 
