@@ -3912,7 +3912,7 @@ gt_pch_nx (function_instance *)
 }
 
 inline void
-gt_pch_nx (function_instance *, void (*) (void *, void *), void *)
+gt_pch_nx (function_instance *, gt_pointer_operator, void *)
 {
 }
 
