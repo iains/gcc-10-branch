@@ -373,7 +373,7 @@ darwin_driver_init (unsigned int *decoded_options_count,
 	case OPT_Xlinker:
 	case OPT_Wl_:
 	  gcc_checking_assert ((*decoded_options)[i].arg);
-	  if (startswith ((*decoded_options)[i].arg, "-exported_symbol"))
+	  if (strncmp ((*decoded_options)[i].arg, "-exported_symbol", 16) == 0)
 	    noexport_p = false;
 	  break;
 
