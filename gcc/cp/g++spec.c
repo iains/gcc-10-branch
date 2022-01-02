@@ -205,7 +205,12 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 
 	case OPT_static_libstdc__:
 	  library = library >= 0 ? 2 : library;
-	  args[i] |= SKIPOPT;
+#ifdef HAVE_LD_STATIC_DYNAMIC
+          /* Remove -static-libstdc++ from the command only if target supports
+             LD_STATIC_DYNAMIC.  When not supported, it is left in so that a
+             back-end target can use outfile substitution.  */
+          args[i] |= SKIPOPT;
+#endif
 	  break;
 
 	case OPT_SPECIAL_input_file:
