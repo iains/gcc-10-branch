@@ -27,6 +27,10 @@ SHLIB_SONAME = @shlib_base_name@$(SHLIB_EXT)
 # overridden in a make fragment that depends on the rpath setting.
 SHLIB_RPATH = $(slibdir)
 
+# Likewise, we only want to add an @loader_path to the shared libs when
+# we have enable_darwin_at_rpath.
+SHLIB_LOADER_PATH =
+
 SHLIB_LINK = $(CC) $(LIBGCC2_CFLAGS) $(LDFLAGS) -dynamiclib -nodefaultlibs \
 	-install_name $(SHLIB_RPATH)/$(SHLIB_INSTALL_NAME) \
 	-single_module -o $(SHLIB_DIR)/$(SHLIB_SONAME) \
@@ -127,6 +131,7 @@ libgcc_s.1.dylib: all-multi libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT) \
 	    ./libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T_$${mlib} || exit 1 ; \
 	  arch=`$(LIPO) -info libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T_$${mlib} | sed -e 's/.*:\ //'` ; \
 	  $(CC) -arch $${arch} -nodefaultlibs -dynamiclib -nodefaultrpaths \
+	    $(SHLIB_LOADER_PATH) \
 	    -o libgcc_s.1$(SHLIB_EXT)_T_$${mlib} \
 	    -Wl,-reexport_library,libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T_$${mlib} \
 	    -Wl,-reexport_library,libgcc_ehs.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T_$${mlib} \
@@ -146,6 +151,7 @@ libgcc_s.1.dylib: all-multi libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)
 	    ./libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T_$${mlib} || exit 1 ; \
 	  arch=`$(LIPO) -info libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T_$${mlib} | sed -e 's/.*:\ //'` ; \
 	  $(CC) -arch $${arch} -nodefaultlibs -dynamiclib -nodefaultrpaths \
+	    $(SHLIB_LOADER_PATH) \
 	    -o libgcc_s.1$(SHLIB_EXT)_T_$${mlib} \
 	    -Wl,-reexport_library,libgcc_s.$(SHLIB_SOVERSION)$(SHLIB_EXT)_T_$${mlib} \
 	    -lSystem \
