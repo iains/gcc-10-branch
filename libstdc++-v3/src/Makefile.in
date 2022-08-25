@@ -513,7 +513,8 @@ libstdc___la_DEPENDENCIES = \
 	$(top_builddir)/src/c++11/libc++11convenience.la \
 	$(top_builddir)/src/c++17/libc++17convenience.la
 
-@ENABLE_DARWIN_AT_RPATH_TRUE@libstdc___darwin_rpath = -Wc,-nodefaultexport,-nodefaultrpaths \
+@ENABLE_DARWIN_AT_RPATH_TRUE@libstdc___darwin_rpath =  \
+@ENABLE_DARWIN_AT_RPATH_TRUE@	-Wc,-nodefaultrpaths \
 @ENABLE_DARWIN_AT_RPATH_TRUE@	-Wl,-rpath,@loader_path
 libstdc___la_LDFLAGS = \
 	-version-info $(libtool_VERSION) ${version_arg} -lm \
