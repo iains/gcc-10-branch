@@ -65,7 +65,8 @@ ADAFLAGS= $(COMMON_ADAFLAGS)
 endif
 
 ALL_ADAFLAGS = \
-  $(CFLAGS) $(ADA_CFLAGS) $(ADAFLAGS) $(CHECKING_ADAFLAGS) $(WARN_ADAFLAGS)
+  $(CFLAGS) $(ADA_CFLAGS) $(ADAFLAGS) $(CHECKING_ADAFLAGS) \
+  $(WARN_ADAFLAGS) $(PICFLAG)
 FORCE_DEBUG_ADAFLAGS = -g
 ADA_CFLAGS =
 ADA_INCLUDES = -nostdinc -I- -I. -Iada/generated -Iada -I$(srcdir)/ada -I$(srcdir)/ada/gcc-interface -Iada/libgnat -I$(srcdir)/ada/libgnat
@@ -1023,7 +1024,7 @@ ada/b_gnat1.adb : $(GNAT1_ADA_OBJS)
 ada/b_gnat1.o : ada/b_gnat1.adb
         # Do not use ADAFLAGS to get rid of -gnatg which generates a lot
         # of style messages.
-	$(CC) -c $(CFLAGS) $(ADA_CFLAGS) -gnatp -gnatws $(ADA_INCLUDES) \
+	$(CC) -c $(CFLAGS) $(ADA_CFLAGS) $(PICFLAG) -gnatp -gnatws $(ADA_INCLUDES) \
 	    $< $(ADA_OUTPUT_OPTION)
 
 ada/b_gnatb.adb : $(GNATBIND_OBJS) ada/gnatbind.o ada/libgnat/interfac.o
@@ -1032,7 +1033,7 @@ ada/b_gnatb.adb : $(GNATBIND_OBJS) ada/gnatbind.o ada/libgnat/interfac.o
 	$(MV) b_gnatb.adb b_gnatb.ads ada/
 
 ada/b_gnatb.o : ada/b_gnatb.adb
-	$(CC) -c $(CFLAGS) $(ADA_CFLAGS) -gnatp -gnatws $(ADA_INCLUDES) \
+	$(CC) -c $(CFLAGS) $(ADA_CFLAGS) $(PICFLAG) -gnatp -gnatws $(ADA_INCLUDES) \
 	    $< $(ADA_OUTPUT_OPTION)
 
 include $(srcdir)/ada/Make-generated.in

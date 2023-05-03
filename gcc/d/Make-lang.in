@@ -52,6 +52,8 @@ d-warn = $(filter-out -pedantic -Woverloaded-virtual, $(STRICT_WARN))
 DMD_WARN_CXXFLAGS = $(filter-out -Wmissing-format-attribute, $(WARN_CXXFLAGS))
 DMD_COMPILE = $(subst $(WARN_CXXFLAGS), $(DMD_WARN_CXXFLAGS), $(COMPILE))
 DMDGEN_COMPILE = $(subst $(COMPILER), $(COMPILER_FOR_BUILD), $(DMD_COMPILE))
+DMD_COMPILE += $(PICFLAG)
+DMDGEN_COMPILE += $(PICFLAG)
 
 # D Frontend object files.
 D_FRONTEND_OBJS = \
