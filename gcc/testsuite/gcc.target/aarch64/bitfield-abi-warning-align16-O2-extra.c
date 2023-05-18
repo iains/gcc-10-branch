@@ -1,4 +1,5 @@
 /* { dg-do compile } */
+/* { dg-skip-if "FIXME: Darwin ABI is different, test it" { *-*-darwin* } } */
 /* { dg-options "-O2 -save-temps" } */
 
 #define ALIGN 16
