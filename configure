@@ -7917,8 +7917,6 @@ done
 
 
 
-
-
 # Generate default definitions for YACC, M4, LEX and other programs that run
 # on the build machine.  These are used if the Makefile can't locate these
 # programs in objdir.
