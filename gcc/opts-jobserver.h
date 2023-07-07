@@ -26,21 +26,22 @@ using namespace std;
 
 struct jobserver_info
 {
+
   /* Default constructor.  */
   jobserver_info ();
 
   /* Error message if there is a problem.  */
-  string error_msg = "";
+  string error_msg;
   /* Skipped MAKEFLAGS where --jobserver-auth is skipped.  */
-  string skipped_makeflags = "";
+  string skipped_makeflags;
   /* File descriptor for reading used for jobserver communication.  */
-  int rfd = -1;
+  int rfd;
   /* File descriptor for writing used for jobserver communication.  */
-  int wfd = -1;
+  int wfd;
   /* Named pipe path.  */
-  string pipe_path = "";
+  string pipe_path;
   /* Return true if jobserver is active.  */
-  bool is_active = false;
+  bool is_active;
 };
 
 #endif /* GCC_JOBSERVER_H */

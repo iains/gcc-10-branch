@@ -1808,7 +1808,7 @@ void prepend_xassembler_to_collect_as_options (const char *collect_as_options,
     }
 }
 
-jobserver_info::jobserver_info ()
+jobserver_info::jobserver_info () : rfd(-1), wfd(-1), is_active(false)
 {
   /* Traditionally, GNU make uses opened pipes for jobserver-auth,
     e.g. --jobserver-auth=3,4.
