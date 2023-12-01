@@ -16,11 +16,32 @@ details.  */
 #include "posix.h"
 #include "posix-threads.h"
 
+#ifdef HAVE_BOEHM_GC
+extern "C"
+{
+// We include two autoconf headers. Avoid multiple definition warnings.
+#undef PACKAGE
+#undef PACKAGE_NAME
+#undef PACKAGE_STRING
+#undef PACKAGE_TARNAME
+#undef PACKAGE_VERSION
+#undef PACKAGE_BUGREPORT
+#undef VERSION
+#include <gc_config.h>
+
 // If we're using the Boehm GC, then we need to override some of the
 // thread primitives.  This is fairly gross.
-#ifdef HAVE_BOEHM_GC
-#include <gc.h>
-#endif /* HAVE_BOEHM_GC */
+
+// Set GC_DEBUG before including gc.h!
+#ifdef LIBGCJ_GC_DEBUG
+# define GC_DEBUG
+#endif
+
+#include <gc/gc_gcj.h>
+#include <gc/gc.h>
+
+};
+#endif
 
 #include <stdlib.h>
 #include <time.h>

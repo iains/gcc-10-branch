@@ -949,18 +949,18 @@ GCSPEC=
 JC1GCSPEC=
 GCTESTSPEC=
 case "$GC" in
- boehm)
+ boehm | bdwgc)
     AC_MSG_RESULT(boehm)
-    GCLIBS=../boehm-gc/libgcjgc_convenience.la
+    GCLIBS=../bdwgc/libgcjgc.la
     JC1GCSPEC='-fuse-boehm-gc'
-    GCTESTSPEC="-L`${PWDCMD-pwd}`/../boehm-gc/.libs -rpath `${PWDCMD-pwd}`/../boehm-gc/.libs"
-    GCINCS='-I$(top_srcdir)/../boehm-gc/include -I../boehm-gc/include'
+    GCTESTSPEC="-L`${PWDCMD-pwd}`/../bdwgc/.libs -rpath `${PWDCMD-pwd}`/../bdwgc/.libs"
+    GCINCS='-I$(top_srcdir)/../bdwgc/include -I../bdwgc/include'
     GCOBJS=boehm.lo    
     GCHDR=boehm-gc.h
     # The POSIX thread support needs to know this.
     AC_DEFINE(HAVE_BOEHM_GC, 1, [Define if Boehm GC in use.])
     ;;
- no)
+ no | none)
     AC_MSG_RESULT(none)
     GCHDR=no-gc.h
     ;;

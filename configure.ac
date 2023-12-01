@@ -164,7 +164,7 @@ target_libraries="target-libgcc \
 		target-libssp \
 		target-libquadmath \
 		target-libgfortran \
-		target-boehm-gc \
+		target-bdwgc \
 		${libgcj} \
 		target-libobjc \
 		target-libada \
@@ -897,7 +897,7 @@ case "${target}" in
     noconfigdirs="$noconfigdirs ${libgcj}"
     ;;
   bfin-*-*)
-    noconfigdirs="$noconfigdirs target-boehm-gc"
+    noconfigdirs="$noconfigdirs target-bdwgc"
     ;;
   bpf-*-*)
     noconfigdirs="$noconfigdirs target-libffi"
@@ -908,7 +908,7 @@ case "${target}" in
       *-*-linux*)
 	;;
       *) # See PR46792 regarding target-libffi.
-	noconfigdirs="$noconfigdirs target-libffi target-boehm-gc";;
+	noconfigdirs="$noconfigdirs target-libffi target-bdwgc";;
     esac
     ;;
   hppa*64*-*-linux*)
@@ -940,7 +940,7 @@ case "${target}" in
     noconfigdirs="$noconfigdirs ${libgcj}"
     ;;
   mmix-*-*)
-    noconfigdirs="$noconfigdirs target-libffi target-boehm-gc"
+    noconfigdirs="$noconfigdirs target-libffi target-bdwgc"
     ;;
   powerpc-*-aix*)
     # copied from rs6000-*-* entry
@@ -2337,7 +2337,7 @@ AC_ARG_ENABLE(objc-gc,
 		[enable use of Boehm's garbage collector with the
 		 GNU Objective-C runtime])],
 [case ,${enable_languages},:${enable_objc_gc}:${noconfigdirs} in
-  *,objc,*:*:yes:*target-boehm-gc*)
+  *,objc,*:*:yes:*target-bdwgc*)
     AC_MSG_ERROR([Boehm's garbage collector was requested yet not supported in this configuration])
     ;;
 esac])
@@ -2345,12 +2345,12 @@ esac])
 # Make sure we only build Boehm's garbage collector if required.
 case ,${enable_languages},:${enable_objc_gc} in
   *,objc,*:yes)
-    # Keep target-boehm-gc if requested for Objective-C.
+    # Keep target-bdwgc if requested for Objective-C.
     ;;
   *)
-    # Otherwise remove target-boehm-gc depending on target-libjava.
+    # Otherwise remove target-bdwgc depending on target-libjava.
     if echo " ${noconfigdirs} " | grep "target-libjava" >/dev/null 2>&1; then
-      noconfigdirs="$noconfigdirs target-boehm-gc"
+      noconfigdirs="$noconfigdirs target-bdwgc"
     fi
     ;;
 esac

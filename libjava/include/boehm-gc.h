@@ -27,14 +27,19 @@ extern "C"
 #include <java/lang/Class.h>
 #include <string.h>
 
-#include <gc_ext_config.h> // for THREAD_LOCAL_ALLOC
+// We include two autoconf headers. Avoid multiple definition warnings.
+#undef PACKAGE
+#undef PACKAGE_NAME
+#undef PACKAGE_STRING
+#undef PACKAGE_TARNAME
+#undef PACKAGE_VERSION
+#undef PACKAGE_BUGREPORT
+#undef VERSION
+
+#include <gc_config.h>
 
 extern "C" void * GC_gcj_malloc(size_t, void *);
 extern "C" void * GC_malloc_atomic(size_t);
-#ifdef THREAD_LOCAL_ALLOC
-extern "C" void * GC_local_gcj_malloc(size_t, void *);
-extern "C" void * GC_local_malloc_atomic(size_t);
-#endif
 
 #ifndef LIBGCJ_GC_DEBUG
 
@@ -43,29 +48,17 @@ _Jv_AllocObj (jsize size, jclass klass)
 {
   // This should call GC_GCJ_MALLOC, but that would involve
   // including gc.h.
-#ifdef THREAD_LOCAL_ALLOC
-  return GC_local_gcj_malloc (size, klass->vtable);
-#else 
   return GC_gcj_malloc (size, klass->vtable);
-#endif
 }
 
 inline void *
 _Jv_AllocPtrFreeObj (jsize size, jclass klass)
 {
 #ifdef JV_HASH_SYNCHRONIZATION
-# ifdef THREAD_LOCAL_ALLOC
-    void * obj = GC_local_malloc_atomic(size);
-# else
-    void * obj = GC_malloc_atomic(size);
-# endif
+  void * obj = GC_malloc_atomic(size);
   *((_Jv_VTable **) obj) = klass->vtable;
 #else
-# ifdef THREAD_LOCAL_ALLOC
-    void * obj = GC_local_gcj_malloc(size, klass->vtable);
-# else
-    void * obj = GC_gcj_malloc(size, klass->vtable);
-# endif
+  void * obj = GC_gcj_malloc(size, klass->vtable);
 #endif
   return obj;
 }

@@ -1087,6 +1087,7 @@ configure-target:  \
     maybe-configure-target-libffi \
     maybe-configure-target-libjava \
     maybe-configure-target-zlib \
+    maybe-configure-target-bdwgc \
     maybe-configure-target-rda \
     maybe-configure-target-libada \
     maybe-configure-target-libgomp \
@@ -1257,6 +1258,7 @@ all-target: maybe-all-target-libgloss
 all-target: maybe-all-target-libffi
 all-target: maybe-all-target-libjava
 all-target: maybe-all-target-zlib
+all-target: maybe-all-target-bdwgc
 all-target: maybe-all-target-rda
 all-target: maybe-all-target-libada
 @if target-libgomp-no-bootstrap
@@ -1354,6 +1356,7 @@ info-target: maybe-info-target-libgloss
 info-target: maybe-info-target-libffi
 info-target: maybe-info-target-libjava
 info-target: maybe-info-target-zlib
+info-target: maybe-info-target-bdwgc
 info-target: maybe-info-target-rda
 info-target: maybe-info-target-libada
 info-target: maybe-info-target-libgomp
@@ -1444,6 +1447,7 @@ dvi-target: maybe-dvi-target-libgloss
 dvi-target: maybe-dvi-target-libffi
 dvi-target: maybe-dvi-target-libjava
 dvi-target: maybe-dvi-target-zlib
+dvi-target: maybe-dvi-target-bdwgc
 dvi-target: maybe-dvi-target-rda
 dvi-target: maybe-dvi-target-libada
 dvi-target: maybe-dvi-target-libgomp
@@ -1534,6 +1538,7 @@ pdf-target: maybe-pdf-target-libgloss
 pdf-target: maybe-pdf-target-libffi
 pdf-target: maybe-pdf-target-libjava
 pdf-target: maybe-pdf-target-zlib
+pdf-target: maybe-pdf-target-bdwgc
 pdf-target: maybe-pdf-target-rda
 pdf-target: maybe-pdf-target-libada
 pdf-target: maybe-pdf-target-libgomp
@@ -1624,6 +1629,7 @@ html-target: maybe-html-target-libgloss
 html-target: maybe-html-target-libffi
 html-target: maybe-html-target-libjava
 html-target: maybe-html-target-zlib
+html-target: maybe-html-target-bdwgc
 html-target: maybe-html-target-rda
 html-target: maybe-html-target-libada
 html-target: maybe-html-target-libgomp
@@ -1714,6 +1720,7 @@ TAGS-target: maybe-TAGS-target-libgloss
 TAGS-target: maybe-TAGS-target-libffi
 TAGS-target: maybe-TAGS-target-libjava
 TAGS-target: maybe-TAGS-target-zlib
+TAGS-target: maybe-TAGS-target-bdwgc
 TAGS-target: maybe-TAGS-target-rda
 TAGS-target: maybe-TAGS-target-libada
 TAGS-target: maybe-TAGS-target-libgomp
@@ -1804,6 +1811,7 @@ install-info-target: maybe-install-info-target-libgloss
 install-info-target: maybe-install-info-target-libffi
 install-info-target: maybe-install-info-target-libjava
 install-info-target: maybe-install-info-target-zlib
+install-info-target: maybe-install-info-target-bdwgc
 install-info-target: maybe-install-info-target-rda
 install-info-target: maybe-install-info-target-libada
 install-info-target: maybe-install-info-target-libgomp
@@ -1894,6 +1902,7 @@ install-pdf-target: maybe-install-pdf-target-libgloss
 install-pdf-target: maybe-install-pdf-target-libffi
 install-pdf-target: maybe-install-pdf-target-libjava
 install-pdf-target: maybe-install-pdf-target-zlib
+install-pdf-target: maybe-install-pdf-target-bdwgc
 install-pdf-target: maybe-install-pdf-target-rda
 install-pdf-target: maybe-install-pdf-target-libada
 install-pdf-target: maybe-install-pdf-target-libgomp
@@ -1984,6 +1993,7 @@ install-html-target: maybe-install-html-target-libgloss
 install-html-target: maybe-install-html-target-libffi
 install-html-target: maybe-install-html-target-libjava
 install-html-target: maybe-install-html-target-zlib
+install-html-target: maybe-install-html-target-bdwgc
 install-html-target: maybe-install-html-target-rda
 install-html-target: maybe-install-html-target-libada
 install-html-target: maybe-install-html-target-libgomp
@@ -2074,6 +2084,7 @@ installcheck-target: maybe-installcheck-target-libgloss
 installcheck-target: maybe-installcheck-target-libffi
 installcheck-target: maybe-installcheck-target-libjava
 installcheck-target: maybe-installcheck-target-zlib
+installcheck-target: maybe-installcheck-target-bdwgc
 installcheck-target: maybe-installcheck-target-rda
 installcheck-target: maybe-installcheck-target-libada
 installcheck-target: maybe-installcheck-target-libgomp
@@ -2164,6 +2175,7 @@ mostlyclean-target: maybe-mostlyclean-target-libgloss
 mostlyclean-target: maybe-mostlyclean-target-libffi
 mostlyclean-target: maybe-mostlyclean-target-libjava
 mostlyclean-target: maybe-mostlyclean-target-zlib
+mostlyclean-target: maybe-mostlyclean-target-bdwgc
 mostlyclean-target: maybe-mostlyclean-target-rda
 mostlyclean-target: maybe-mostlyclean-target-libada
 mostlyclean-target: maybe-mostlyclean-target-libgomp
@@ -2254,6 +2266,7 @@ clean-target: maybe-clean-target-libgloss
 clean-target: maybe-clean-target-libffi
 clean-target: maybe-clean-target-libjava
 clean-target: maybe-clean-target-zlib
+clean-target: maybe-clean-target-bdwgc
 clean-target: maybe-clean-target-rda
 clean-target: maybe-clean-target-libada
 clean-target: maybe-clean-target-libgomp
@@ -2344,6 +2357,7 @@ distclean-target: maybe-distclean-target-libgloss
 distclean-target: maybe-distclean-target-libffi
 distclean-target: maybe-distclean-target-libjava
 distclean-target: maybe-distclean-target-zlib
+distclean-target: maybe-distclean-target-bdwgc
 distclean-target: maybe-distclean-target-rda
 distclean-target: maybe-distclean-target-libada
 distclean-target: maybe-distclean-target-libgomp
@@ -2434,6 +2448,7 @@ maintainer-clean-target: maybe-maintainer-clean-target-libgloss
 maintainer-clean-target: maybe-maintainer-clean-target-libffi
 maintainer-clean-target: maybe-maintainer-clean-target-libjava
 maintainer-clean-target: maybe-maintainer-clean-target-zlib
+maintainer-clean-target: maybe-maintainer-clean-target-bdwgc
 maintainer-clean-target: maybe-maintainer-clean-target-rda
 maintainer-clean-target: maybe-maintainer-clean-target-libada
 maintainer-clean-target: maybe-maintainer-clean-target-libgomp
@@ -2580,6 +2595,7 @@ check-target:  \
     maybe-check-target-libffi \
     maybe-check-target-libjava \
     maybe-check-target-zlib \
+    maybe-check-target-bdwgc \
     maybe-check-target-rda \
     maybe-check-target-libada \
     maybe-check-target-libgomp \
@@ -2770,6 +2786,7 @@ install-target:  \
     maybe-install-target-libffi \
     maybe-install-target-libjava \
     maybe-install-target-zlib \
+    maybe-install-target-bdwgc \
     maybe-install-target-rda \
     maybe-install-target-libada \
     maybe-install-target-libgomp \
@@ -2880,6 +2897,7 @@ install-strip-target:  \
     maybe-install-strip-target-libffi \
     maybe-install-strip-target-libjava \
     maybe-install-strip-target-zlib \
+    maybe-install-strip-target-bdwgc \
     maybe-install-strip-target-rda \
     maybe-install-strip-target-libada \
     maybe-install-strip-target-libgomp \
@@ -52869,6 +52887,454 @@ maintainer-clean-target-zlib:
 
 
 
+.PHONY: configure-target-bdwgc maybe-configure-target-bdwgc
+maybe-configure-target-bdwgc:
+@if gcc-bootstrap
+configure-target-bdwgc: stage_current
+@endif gcc-bootstrap
+@if target-bdwgc
+maybe-configure-target-bdwgc: configure-target-bdwgc
+configure-target-bdwgc: 
+	@: $(MAKE); $(unstage)
+	@r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	echo "Checking multilib configuration for bdwgc..."; \
+	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/bdwgc; \
+	$(CC_FOR_TARGET) --print-multi-lib > $(TARGET_SUBDIR)/bdwgc/multilib.tmp 2> /dev/null; \
+	if test -r $(TARGET_SUBDIR)/bdwgc/multilib.out; then \
+	  if cmp -s $(TARGET_SUBDIR)/bdwgc/multilib.tmp $(TARGET_SUBDIR)/bdwgc/multilib.out; then \
+	    rm -f $(TARGET_SUBDIR)/bdwgc/multilib.tmp; \
+	  else \
+	    rm -f $(TARGET_SUBDIR)/bdwgc/Makefile; \
+	    mv $(TARGET_SUBDIR)/bdwgc/multilib.tmp $(TARGET_SUBDIR)/bdwgc/multilib.out; \
+	  fi; \
+	else \
+	  mv $(TARGET_SUBDIR)/bdwgc/multilib.tmp $(TARGET_SUBDIR)/bdwgc/multilib.out; \
+	fi; \
+	test ! -f $(TARGET_SUBDIR)/bdwgc/Makefile || exit 0; \
+	$(SHELL) $(srcdir)/mkinstalldirs $(TARGET_SUBDIR)/bdwgc; \
+	$(NORMAL_TARGET_EXPORTS)  \
+	echo Configuring in $(TARGET_SUBDIR)/bdwgc; \
+	cd "$(TARGET_SUBDIR)/bdwgc" || exit 1; \
+	case $(srcdir) in \
+	  /* | [A-Za-z]:[\\/]*) topdir=$(srcdir) ;; \
+	  *) topdir=`echo $(TARGET_SUBDIR)/bdwgc/ | \
+		sed -e 's,\./,,g' -e 's,[^/]*/,../,g' `$(srcdir) ;; \
+	esac; \
+	module_srcdir=bdwgc; \
+	rm -f no-such-file || : ; \
+	CONFIG_SITE=no-such-file $(SHELL) \
+	  $$s/$$module_srcdir/configure \
+	  --srcdir=$${topdir}/$$module_srcdir \
+	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
+	  --target=${target_alias} --enable-static --disable-shared --with-pic \
+	  || exit 1
+@endif target-bdwgc
+
+
+
+
+
+.PHONY: all-target-bdwgc maybe-all-target-bdwgc
+maybe-all-target-bdwgc:
+@if gcc-bootstrap
+all-target-bdwgc: stage_current
+@endif gcc-bootstrap
+@if target-bdwgc
+TARGET-target-bdwgc=all
+maybe-all-target-bdwgc: all-target-bdwgc
+all-target-bdwgc: configure-target-bdwgc
+	@: $(MAKE); $(unstage)
+	@r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS)  \
+	(cd $(TARGET_SUBDIR)/bdwgc && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) $(EXTRA_TARGET_FLAGS)   \
+		$(TARGET-target-bdwgc))
+@endif target-bdwgc
+
+
+
+
+
+.PHONY: check-target-bdwgc maybe-check-target-bdwgc
+maybe-check-target-bdwgc:
+@if target-bdwgc
+maybe-check-target-bdwgc: check-target-bdwgc
+
+check-target-bdwgc:
+	@: $(MAKE); $(unstage)
+	@r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	(cd $(TARGET_SUBDIR)/bdwgc && \
+	  $(MAKE) $(TARGET_FLAGS_TO_PASS)   check)
+
+@endif target-bdwgc
+
+.PHONY: install-target-bdwgc maybe-install-target-bdwgc
+maybe-install-target-bdwgc:
+@if target-bdwgc
+maybe-install-target-bdwgc: install-target-bdwgc
+
+# Dummy target for uninstallable.
+install-target-bdwgc:
+
+@endif target-bdwgc
+
+.PHONY: install-strip-target-bdwgc maybe-install-strip-target-bdwgc
+maybe-install-strip-target-bdwgc:
+@if target-bdwgc
+maybe-install-strip-target-bdwgc: install-strip-target-bdwgc
+
+# Dummy target for uninstallable.
+install-strip-target-bdwgc:
+
+@endif target-bdwgc
+
+# Other targets (info, dvi, pdf, etc.)
+
+.PHONY: maybe-info-target-bdwgc info-target-bdwgc
+maybe-info-target-bdwgc:
+@if target-bdwgc
+maybe-info-target-bdwgc: info-target-bdwgc
+
+info-target-bdwgc: \
+    configure-target-bdwgc 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/bdwgc/Makefile ] || exit 0; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing info in $(TARGET_SUBDIR)/bdwgc"; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/bdwgc && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           info) \
+	  || exit 1
+
+@endif target-bdwgc
+
+.PHONY: maybe-dvi-target-bdwgc dvi-target-bdwgc
+maybe-dvi-target-bdwgc:
+@if target-bdwgc
+maybe-dvi-target-bdwgc: dvi-target-bdwgc
+
+dvi-target-bdwgc: \
+    configure-target-bdwgc 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/bdwgc/Makefile ] || exit 0; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing dvi in $(TARGET_SUBDIR)/bdwgc"; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/bdwgc && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           dvi) \
+	  || exit 1
+
+@endif target-bdwgc
+
+.PHONY: maybe-pdf-target-bdwgc pdf-target-bdwgc
+maybe-pdf-target-bdwgc:
+@if target-bdwgc
+maybe-pdf-target-bdwgc: pdf-target-bdwgc
+
+pdf-target-bdwgc: \
+    configure-target-bdwgc 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/bdwgc/Makefile ] || exit 0; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing pdf in $(TARGET_SUBDIR)/bdwgc"; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/bdwgc && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           pdf) \
+	  || exit 1
+
+@endif target-bdwgc
+
+.PHONY: maybe-html-target-bdwgc html-target-bdwgc
+maybe-html-target-bdwgc:
+@if target-bdwgc
+maybe-html-target-bdwgc: html-target-bdwgc
+
+html-target-bdwgc: \
+    configure-target-bdwgc 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/bdwgc/Makefile ] || exit 0; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing html in $(TARGET_SUBDIR)/bdwgc"; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/bdwgc && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           html) \
+	  || exit 1
+
+@endif target-bdwgc
+
+.PHONY: maybe-TAGS-target-bdwgc TAGS-target-bdwgc
+maybe-TAGS-target-bdwgc:
+@if target-bdwgc
+maybe-TAGS-target-bdwgc: TAGS-target-bdwgc
+
+TAGS-target-bdwgc: \
+    configure-target-bdwgc 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/bdwgc/Makefile ] || exit 0; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing TAGS in $(TARGET_SUBDIR)/bdwgc"; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/bdwgc && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           TAGS) \
+	  || exit 1
+
+@endif target-bdwgc
+
+.PHONY: maybe-install-info-target-bdwgc install-info-target-bdwgc
+maybe-install-info-target-bdwgc:
+@if target-bdwgc
+maybe-install-info-target-bdwgc: install-info-target-bdwgc
+
+install-info-target-bdwgc: \
+    configure-target-bdwgc \
+    info-target-bdwgc 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/bdwgc/Makefile ] || exit 0; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing install-info in $(TARGET_SUBDIR)/bdwgc"; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/bdwgc && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           install-info) \
+	  || exit 1
+
+@endif target-bdwgc
+
+.PHONY: maybe-install-pdf-target-bdwgc install-pdf-target-bdwgc
+maybe-install-pdf-target-bdwgc:
+@if target-bdwgc
+maybe-install-pdf-target-bdwgc: install-pdf-target-bdwgc
+
+install-pdf-target-bdwgc: \
+    configure-target-bdwgc \
+    pdf-target-bdwgc 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/bdwgc/Makefile ] || exit 0; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing install-pdf in $(TARGET_SUBDIR)/bdwgc"; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/bdwgc && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           install-pdf) \
+	  || exit 1
+
+@endif target-bdwgc
+
+.PHONY: maybe-install-html-target-bdwgc install-html-target-bdwgc
+maybe-install-html-target-bdwgc:
+@if target-bdwgc
+maybe-install-html-target-bdwgc: install-html-target-bdwgc
+
+install-html-target-bdwgc: \
+    configure-target-bdwgc \
+    html-target-bdwgc 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/bdwgc/Makefile ] || exit 0; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing install-html in $(TARGET_SUBDIR)/bdwgc"; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/bdwgc && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           install-html) \
+	  || exit 1
+
+@endif target-bdwgc
+
+.PHONY: maybe-installcheck-target-bdwgc installcheck-target-bdwgc
+maybe-installcheck-target-bdwgc:
+@if target-bdwgc
+maybe-installcheck-target-bdwgc: installcheck-target-bdwgc
+
+installcheck-target-bdwgc: \
+    configure-target-bdwgc 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/bdwgc/Makefile ] || exit 0; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing installcheck in $(TARGET_SUBDIR)/bdwgc"; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/bdwgc && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           installcheck) \
+	  || exit 1
+
+@endif target-bdwgc
+
+.PHONY: maybe-mostlyclean-target-bdwgc mostlyclean-target-bdwgc
+maybe-mostlyclean-target-bdwgc:
+@if target-bdwgc
+maybe-mostlyclean-target-bdwgc: mostlyclean-target-bdwgc
+
+mostlyclean-target-bdwgc: 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/bdwgc/Makefile ] || exit 0; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing mostlyclean in $(TARGET_SUBDIR)/bdwgc"; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/bdwgc && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           mostlyclean) \
+	  || exit 1
+
+@endif target-bdwgc
+
+.PHONY: maybe-clean-target-bdwgc clean-target-bdwgc
+maybe-clean-target-bdwgc:
+@if target-bdwgc
+maybe-clean-target-bdwgc: clean-target-bdwgc
+
+clean-target-bdwgc: 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/bdwgc/Makefile ] || exit 0; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing clean in $(TARGET_SUBDIR)/bdwgc"; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/bdwgc && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           clean) \
+	  || exit 1
+
+@endif target-bdwgc
+
+.PHONY: maybe-distclean-target-bdwgc distclean-target-bdwgc
+maybe-distclean-target-bdwgc:
+@if target-bdwgc
+maybe-distclean-target-bdwgc: distclean-target-bdwgc
+
+distclean-target-bdwgc: 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/bdwgc/Makefile ] || exit 0; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing distclean in $(TARGET_SUBDIR)/bdwgc"; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/bdwgc && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           distclean) \
+	  || exit 1
+
+@endif target-bdwgc
+
+.PHONY: maybe-maintainer-clean-target-bdwgc maintainer-clean-target-bdwgc
+maybe-maintainer-clean-target-bdwgc:
+@if target-bdwgc
+maybe-maintainer-clean-target-bdwgc: maintainer-clean-target-bdwgc
+
+maintainer-clean-target-bdwgc: 
+	@: $(MAKE); $(unstage)
+	@[ -f $(TARGET_SUBDIR)/bdwgc/Makefile ] || exit 0; \
+	r=`${PWD_COMMAND}`; export r; \
+	s=`cd $(srcdir); ${PWD_COMMAND}`; export s; \
+	$(NORMAL_TARGET_EXPORTS) \
+	echo "Doing maintainer-clean in $(TARGET_SUBDIR)/bdwgc"; \
+	for flag in $(EXTRA_TARGET_FLAGS); do \
+	  eval `echo "$$flag" | sed -e "s|^\([^=]*\)=\(.*\)|\1='\2'; export \1|"`; \
+	done; \
+	(cd $(TARGET_SUBDIR)/bdwgc && \
+	  $(MAKE) $(BASE_FLAGS_TO_PASS) "AR=$${AR}" "AS=$${AS}" \
+	          "CC=$${CC}" "CXX=$${CXX}" "LD=$${LD}" "NM=$${NM}" \
+	          "RANLIB=$${RANLIB}" \
+	          "DLLTOOL=$${DLLTOOL}" "WINDRES=$${WINDRES}" "WINDMC=$${WINDMC}" \
+	           maintainer-clean) \
+	  || exit 1
+
+@endif target-bdwgc
+
+
+
+
+
 .PHONY: configure-target-rda maybe-configure-target-rda
 maybe-configure-target-rda:
 @if gcc-bootstrap
@@ -59365,6 +59831,7 @@ configure-target-libgloss: stage_last
 configure-target-libffi: stage_last
 configure-target-libjava: stage_last
 configure-target-zlib: stage_last
+configure-target-bdwgc: stage_last
 configure-target-rda: stage_last
 configure-target-libada: stage_last
 configure-stage1-target-libgomp: maybe-all-stage1-gcc
@@ -59401,6 +59868,7 @@ configure-target-libgloss: maybe-all-gcc
 configure-target-libffi: maybe-all-gcc
 configure-target-libjava: maybe-all-gcc
 configure-target-zlib: maybe-all-gcc
+configure-target-bdwgc: maybe-all-gcc
 configure-target-rda: maybe-all-gcc
 configure-target-libada: maybe-all-gcc
 configure-target-libgomp: maybe-all-gcc
@@ -60486,14 +60954,14 @@ all-target-libphobos: maybe-all-target-libbacktrace
 all-target-libphobos: maybe-all-target-zlib
 all-target-libphobos: maybe-all-target-libatomic
 configure-target-libjava: maybe-configure-target-zlib
-configure-target-libjava: maybe-configure-target-boehm-gc
+configure-target-libjava: maybe-configure-target-bdwgc
 configure-target-libjava: maybe-configure-target-libffi
 all-target-libjava: maybe-all-fastjar
 all-target-libjava: maybe-all-target-zlib
-all-target-libjava: maybe-all-target-boehm-gc
+all-target-libjava: maybe-all-target-bdwgc
 all-target-libjava: maybe-all-target-libffi
-configure-target-libobjc: maybe-configure-target-boehm-gc
-all-target-libobjc: maybe-all-target-boehm-gc
+configure-target-libobjc: maybe-configure-target-bdwgc
+all-target-libobjc: maybe-all-target-bdwgc
 configure-target-libstdc++-v3: maybe-configure-target-libgomp
 configure-stage1-target-libstdc++-v3: maybe-configure-stage1-target-libgomp
 configure-stage2-target-libstdc++-v3: maybe-configure-stage2-target-libgomp
@@ -60605,6 +61073,7 @@ all-fastjar: maybe-all-libiberty
 all-bison: maybe-all-intl
 all-flex: maybe-all-intl
 all-m4: maybe-all-intl
+configure-target-bdwgc: maybe-all-target-libstdc++-v3
 configure-target-libgo: maybe-all-target-libstdc++-v3
 configure-target-liboffloadmic: maybe-configure-target-libgomp
 all-target-liboffloadmic: maybe-all-target-libgomp
@@ -60676,6 +61145,7 @@ configure-target-libgloss: maybe-all-target-libgcc
 configure-target-libffi: maybe-all-target-libgcc
 configure-target-libjava: maybe-all-target-libgcc
 configure-target-zlib: maybe-all-target-libgcc
+configure-target-bdwgc: maybe-all-target-libgcc
 configure-target-rda: maybe-all-target-libgcc
 configure-target-libada: maybe-all-target-libgcc
 configure-target-libgomp: maybe-all-target-libgcc
@@ -60723,6 +61193,8 @@ configure-target-libjava: maybe-all-target-newlib maybe-all-target-libgloss
 configure-target-libjava: maybe-all-target-libstdc++-v3
 
 configure-target-zlib: maybe-all-target-newlib maybe-all-target-libgloss
+
+configure-target-bdwgc: maybe-all-target-newlib maybe-all-target-libgloss
 
 configure-target-rda: maybe-all-target-newlib maybe-all-target-libgloss
 

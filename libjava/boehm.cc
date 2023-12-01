@@ -27,10 +27,13 @@ details.  */
 #undef FALSE
 
 // We include two autoconf headers. Avoid multiple definition warnings.
+#undef PACKAGE
 #undef PACKAGE_NAME
 #undef PACKAGE_STRING
 #undef PACKAGE_TARNAME
 #undef PACKAGE_VERSION
+#undef PACKAGE_BUGREPORT
+#undef VERSION
 
 #ifdef HAVE_DLFCN_H
 #undef _GNU_SOURCE
@@ -47,18 +50,18 @@ extern "C"
 # define GC_DEBUG
 #endif
 
-#include <gc_mark.h>
-#include <gc_gcj.h>
-#include <javaxfc.h>  // GC_finalize_all declaration.  
+#include <gc/gc_mark.h>
+#include <gc/gc_gcj.h>
+#include <gc/javaxfc.h>  // GC_finalize_all declaration.  
 
 #ifdef THREAD_LOCAL_ALLOC
 # define GC_REDIRECT_TO_LOCAL
-# include <gc_local_alloc.h>
+# include <gc/gc.h>
 #endif
 
   // From boehm's misc.c 
-  void GC_enable();
-  void GC_disable();
+  //void GC_enable();
+  //void GC_disable();
 };
 
 #define MAYBE_MARK(Obj, Top, Limit, Source)  \
@@ -468,7 +471,9 @@ _Jv_GCSetMaximumHeapSize (size_t size)
 int
 _Jv_SetGCFreeSpaceDivisor (int div)
 {
-  return (int)GC_set_free_space_divisor ((GC_word)div);
+  int old = (int) GC_get_free_space_divisor ();
+  GC_set_free_space_divisor ((GC_word)div);
+  return old;
 }
 
 void
