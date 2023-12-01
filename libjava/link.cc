@@ -26,7 +26,9 @@ details.  */
 #ifdef LIBGCJ_GC_DEBUG
 # define GC_DEBUG
 #endif
+#ifdef HAVE_BOEHM_GC
 #include <gc.h>
+#endif
 
 #include <jvm.h>
 #include <gcj/cni.h>
@@ -398,6 +400,7 @@ _Jv_Linker::resolve_pool_entry (jclass klass, int index, bool lazy)
 {
   using namespace java::lang::reflect;
 
+#ifdef HAVE_BOEHM_GC
   if (GC_base (klass) && klass->constants.data
       && ! GC_base (klass->constants.data))
     // If a class is heap-allocated but the constant pool is not this
@@ -416,6 +419,7 @@ _Jv_Linker::resolve_pool_entry (jclass klass, int index, bool lazy)
 	  klass->constants.data = constants;
 	}
     }
+#endif
 
   _Jv_Constants *pool = &klass->constants;
 
@@ -2017,7 +2021,7 @@ _Jv_Linker::wait_for_state (jclass klass, int state)
 
     java::lang::Thread *save = klass->thread;
     klass->thread = self;
-
+#ifdef HAVE_BOEHM_GC
     // Allocate memory for static fields and constants.
     if (GC_base (klass) && klass->fields && ! GC_base (klass->fields))
       {
@@ -2032,7 +2036,7 @@ _Jv_Linker::wait_for_state (jclass klass, int state)
 	    klass->fields = fields;
 	  }
       }
-      
+#endif  
   // Print some debugging info if requested.  Interpreted classes are
   // handled in defineclass, so we only need to handle the two
   // pre-compiled cases here.

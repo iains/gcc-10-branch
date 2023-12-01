@@ -222,6 +222,9 @@ get_boehm_type_descriptor (tree type)
 bool
 uses_jv_markobj_p (tree dtable)
 {
+  if (!flag_use_boehm_gc)
+    return false;
+
   tree v;
   /* FIXME: what do we return if !flag_use_boehm_gc ? */
   gcc_assert (flag_use_boehm_gc);

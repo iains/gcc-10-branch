@@ -490,8 +490,10 @@ _Jv_AttachCurrentThread(java::lang::Thread* thread)
 java::lang::Thread*
 _Jv_AttachCurrentThread(jstring name, java::lang::ThreadGroup* group)
 {
+#ifdef HAVE_BOEHM_GC
   // Register thread with GC before attempting any allocations.
   _Jv_GCAttachThread ();
+#endif
   java::lang::Thread *thread = _Jv_ThreadCurrent ();
   if (thread != NULL)
     return thread;
@@ -526,7 +528,9 @@ _Jv_DetachCurrentThread (void)
     return -1;
 
   _Jv_ThreadUnRegister ();
+#ifdef HAVE_BOEHM_GC
   _Jv_GCDetachThread ();
+#endif
   // Release the monitors.
   t->finish_ ();
 

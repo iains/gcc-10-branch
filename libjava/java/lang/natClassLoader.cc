@@ -284,8 +284,9 @@ _Jv_CheckABIVersion (unsigned long value)
 void
 _Jv_RegisterClasses (const jclass *classes)
 {
+#ifdef HAVE_BOEHM_GC
   _Jv_RegisterLibForGc (classes);
-
+#endif
   for (; *classes; ++classes)
     {
       jclass klass = *classes;
@@ -301,7 +302,9 @@ _Jv_RegisterClasses_Counted (const jclass * classes, size_t count)
 {
   size_t i;
 
+#ifdef HAVE_BOEHM_GC
   _Jv_RegisterLibForGc (classes);
+#endif
 
   for (i = 0; i < count; i++)
     {
