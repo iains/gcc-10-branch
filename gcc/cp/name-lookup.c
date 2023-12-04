@@ -6888,6 +6888,9 @@ do_pushtag (tree name, tree type, tag_scope scope)
 	      && b->level_chain->kind == sk_class))
 	in_class = 1;
 
+      if (current_lang_name == lang_name_java)
+	TYPE_FOR_JAVA (type) = 1;
+
       tdef = create_implicit_typedef (name, type);
       DECL_CONTEXT (tdef) = FROB_CONTEXT (context);
       if (scope == ts_within_enclosing_non_class)
