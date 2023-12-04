@@ -59,6 +59,10 @@ enum incremental_link flag_incremental_link = INCREMENTAL_LINK_NONE
 Variable
 int flag_complex_method = 1
 
+; Nonzero if subexpressions must be evaluated from left-to-right.
+Variable
+int flag_evaluation_order = 0
+
 ; Language specific warning pass for unused results.
 Variable
 bool flag_warn_unused_result = false

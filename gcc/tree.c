@@ -5592,8 +5592,8 @@ free_lang_data_in_type (tree type, class free_lang_data_d *fld)
 	  /* C++ FE uses TREE_PURPOSE to store initial values.  */
 	  TREE_PURPOSE (p) = NULL;
 	}
-      /* Java uses TYPE_MINVAL for TYPE_ARGUMENT_SIGNATURE.  */
-      TYPE_MINVAL (type) = NULL;
+      /* Java uses TYPE_TYPE_MIN_VALUE_RAW for TYPE_ARGUMENT_SIGNATURE.  */
+      TYPE_MIN_VALUE_RAW (type) = NULL;
     }
   else if (TREE_CODE (type) == METHOD_TYPE)
     {
@@ -5604,8 +5604,8 @@ free_lang_data_in_type (tree type, class free_lang_data_d *fld)
 	  TREE_VALUE (p) = fld_simplified_type (TREE_VALUE (p), fld);
 	  TREE_PURPOSE (p) = NULL;
 	}
-      /* Java uses TYPE_MINVAL for TYPE_ARGUMENT_SIGNATURE.  */
-      TYPE_MINVAL (type) = NULL;
+      /* Java uses TYPE_MIN_VALUE_RAW for TYPE_ARGUMENT_SIGNATURE.  */
+      TYPE_MIN_VALUE_RAW (type) = NULL;
     }
   else if (RECORD_OR_UNION_TYPE_P (type))
     {
@@ -14547,13 +14547,13 @@ verify_type (const_tree t)
 				     TREE_TYPE (TYPE_MIN_VALUE (t))
 	 but does not for C sizetypes in LTO.  */
     }
-  /* Java uses TYPE_MINVAL for TYPE_ARGUMENT_SIGNATURE.  */
-  else if (TYPE_MINVAL (t)
+  /* Java uses TYPE_MIN_VALUE_RAW for TYPE_ARGUMENT_SIGNATURE.  */
+  else if (TYPE_MIN_VALUE_RAW (t)
 	   && ((TREE_CODE (t) != METHOD_TYPE && TREE_CODE (t) != FUNCTION_TYPE)
 	       || in_lto_p))
     {
-      error ("TYPE_MINVAL non-NULL");
-      debug_tree (TYPE_MINVAL (t));
+      error ("TYPE_MIN_VALUE_RAW non-NULL");
+      debug_tree (TYPE_MIN_VALUE_RAW (t));
       error_found = true;
     }
 
