@@ -51563,7 +51563,7 @@ configure-target-libffi:
 	  $$s/$$module_srcdir/configure \
 	  --srcdir=$${topdir}/$$module_srcdir \
 	  $(TARGET_CONFIGARGS) --build=${build_alias} --host=${target_alias} \
-	  --target=${target_alias}  \
+	  --target=${target_alias} --enable-static --disable-shared --with-pic \
 	  || exit 1
 @endif target-libffi
 
