@@ -24,6 +24,7 @@ if ![info exists tmpdir] {
 # from the bytecode front end that we don't care about.
 proc libjava_prune_warnings {text} {
     set text [prune_warnings $text]
+    regsub -all "^while processing .*(^|\n)\[^\n\]*line table parameters mismatch. Cannot emit.*\[^\n\]*" $text "" text
     set tlist [split $text \n]
     set len [llength $tlist]
     for {set i [expr {$len - 1}]} {$i >= 2} {incr i -1} {
@@ -41,6 +42,17 @@ proc libjava_prune_warnings {text} {
     }
     return [join $tlist \n]
 }
+
+proc libjava-dg-prune { system text } {
+    global additional_prunes
+
+#    send_user "Before:$text\n"
+
+    regsub -all "(^|\n)\[^\n\]*line table parameters mismatch. Cannot emit.\[^\n\]*" $text "" text
+#    send_user "After:$text\n"
+    return $text
+}
+
 
 # This is like `target_compile' but it does some surgery to work
 # around stupid DejaGNU bugs.  In particular DejaGNU has very poor
