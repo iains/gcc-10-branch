@@ -1496,6 +1496,12 @@ traditional preprocessor).
 @item @var{file}.go
 Go source code.
 
+@c FIXME: Descriptions of Java file types.
+@c @var{file}.java
+@c @var{file}.class
+@c @var{file}.zip
+@c @var{file}.jar
+
 @item @var{file}.brig
 BRIG files (binary representation of HSAIL).
 
@@ -1554,7 +1560,9 @@ ada
 d
 f77  f77-cpp-input f95  f95-cpp-input
 go
+java
 brig
+
 @end smallexample
 
 @item -x none
@@ -3802,7 +3810,7 @@ accomplished via the comm page.
 @item -fobjc-exceptions
 @opindex fobjc-exceptions
 Enable syntactic support for structured exception handling in
-Objective-C, similar to what is offered by C++.  This option
+Objective-C, similar to what is offered by C++ and Java.  This option
 is required to use the Objective-C keywords @code{@@try},
 @code{@@throw}, @code{@@catch}, @code{@@finally} and
 @code{@@synchronized}.  This option is available with both the GNU
@@ -14880,7 +14888,8 @@ results in @option{-ftrapv} being effective.
 This option instructs the compiler to assume that signed arithmetic
 overflow of addition, subtraction and multiplication wraps around
 using twos-complement representation.  This flag enables some optimizations
-and disables others.
+and disables others.  This option is enabled by default for the Java
+front end, as required by the Java language specification.
 The options @option{-ftrapv} and @option{-fwrapv} override each other, so using
 @option{-ftrapv} @option{-fwrapv} on the command-line results in
 @option{-fwrapv} being effective.  Note that only active options override, so
