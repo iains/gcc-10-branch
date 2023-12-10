@@ -415,7 +415,10 @@ parse_signature_string (const unsigned char *sig_string, int sig_length)
       if (str++, str >= limit)
 	abort ();
       result_type = parse_signature_type (&str, limit);
-      argtype_list = chainon (nreverse (argtype_list), end_params_node);
+      if (!argtype_list)
+	argtype_list = void_list_node;
+      else
+	argtype_list = chainon (nreverse (argtype_list), void_list_node);
       result_type = build_function_type (result_type, argtype_list);
     }
   else
@@ -467,7 +470,7 @@ build_java_argument_signature (tree type)
       tree args = TYPE_ARG_TYPES (type);
       if (TREE_CODE (type) == METHOD_TYPE)
 	args = TREE_CHAIN (args);  /* Skip "this" argument. */
-      for (; args != end_params_node; args = TREE_CHAIN (args))
+      for (; args != void_list_node; args = TREE_CHAIN (args))
 	{
 	  tree t = build_java_signature (TREE_VALUE (args));
 	  obstack_grow (&temporary_obstack,

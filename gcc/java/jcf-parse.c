@@ -1582,7 +1582,7 @@ parse_class_file (void)
 	  /* We need to compute the DECL_MAX_LOCALS. We need to take
              the wide types into account too. */
 	  for (arg = TYPE_ARG_TYPES (TREE_TYPE (method)), decl_max_locals = 0; 
-	       arg != end_params_node;
+	       arg != void_list_node;
 	       arg = TREE_CHAIN (arg), decl_max_locals += 1)
 	    {
 	      if (TREE_VALUE (arg) && TYPE_IS_WIDE (TREE_VALUE (arg)))

@@ -204,12 +204,12 @@ mangle_method_decl (tree mdecl)
     }
   
   /* No arguments is easy. We shortcut it. */
-  if (arglist == end_params_node)
+  if (arglist == void_list_node)
     obstack_1grow (mangle_obstack, 'v');
   else
     {
       tree arg;
-      for (arg = arglist; arg != end_params_node;  arg = TREE_CHAIN (arg))
+      for (arg = arglist; arg != void_list_node;  arg = TREE_CHAIN (arg))
 	mangle_type (TREE_VALUE (arg));
     }
 }

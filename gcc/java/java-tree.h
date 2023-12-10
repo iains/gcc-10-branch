@@ -274,8 +274,6 @@ enum java_tree_index
   JTI_ASSERTION_ENTRY_TYPE,
   JTI_ASSERTION_TABLE_TYPE,
 
-  JTI_END_PARAMS_NODE,
-
   JTI_THROW_NODE,
   JTI_ALLOC_OBJECT_NODE,
   JTI_ALLOC_NO_FINALIZER_NODE,
@@ -502,9 +500,6 @@ extern GTY(()) tree java_global_trees[JTI_MAX];
   java_global_trees[JTI_ASSERTION_ENTRY_TYPE]
 #define assertion_table_type \
   java_global_trees[JTI_ASSERTION_TABLE_TYPE]
-
-#define end_params_node \
-  java_global_trees[JTI_END_PARAMS_NODE]
 
 /* References to internal libjava functions we use. */
 #define throw_node \

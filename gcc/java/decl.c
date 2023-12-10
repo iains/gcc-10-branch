@@ -559,6 +559,7 @@ java_init_decl_processing (void)
 
   /* Build common tree nodes, Java has an unsigned char.  */
   build_common_tree_nodes (false);
+  void_list_node = build_tree_list (NULL_TREE, void_type_node);
 
   /* ???  Now we continue and override some of the built types again
      with Java specific types.  As the above generated types are
@@ -956,8 +957,6 @@ java_init_decl_processing (void)
   FINISH_RECORD (method_type_node);
   build_decl (BUILTINS_LOCATION,
 	      TYPE_DECL, get_identifier ("Method"), method_type_node);
-
-  end_params_node = tree_cons (NULL_TREE, void_type_node, NULL_TREE);
 
   t = build_function_type_list (ptr_type_node, class_ptr_type, NULL_TREE);
   alloc_object_node = add_builtin_function ("_Jv_AllocObject", t,
@@ -1771,7 +1770,7 @@ start_java_method (tree fndecl)
 
   ptr = &DECL_ARGUMENTS (fndecl);
   for (tem = TYPE_ARG_TYPES (TREE_TYPE (fndecl)), i = 0;
-       tem != end_params_node; tem = TREE_CHAIN (tem), i++)
+       tem != void_list_node; tem = TREE_CHAIN (tem), i++)
     {
       tree parm_name = NULL_TREE, parm_decl;
       tree parm_type = TREE_VALUE (tem);
