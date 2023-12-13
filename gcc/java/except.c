@@ -396,7 +396,7 @@ prepare_eh_table_type (tree type)
       TREE_STATIC (decl) = 1;
       DECL_ARTIFICIAL (decl) = 1;
       DECL_IGNORED_P (decl) = 1;
-      TREE_READONLY (decl) = 1;
+      TREE_READONLY (decl) = 0;
       TREE_THIS_VOLATILE (decl) = 0;
       DECL_INITIAL (decl) = build_class_ref (type);
       layout_decl (decl, 0);
@@ -414,7 +414,7 @@ prepare_eh_table_type (tree type)
       TREE_STATIC (decl) = 1;
       DECL_ARTIFICIAL (decl) = 1;
       DECL_IGNORED_P (decl) = 1;
-      TREE_READONLY (decl) = 1;
+      TREE_READONLY (decl) = 0;
       TREE_THIS_VOLATILE (decl) = 0;
       layout_decl (decl, 0);
       pushdecl (decl);

@@ -461,7 +461,7 @@ gen_indirect_dispatch_tables (tree type)
 		    build_array_type (catch_class_type, 0));
     DECL_EXTERNAL (TYPE_CTABLE_DECL (type)) = 1;
     TREE_STATIC (TYPE_CTABLE_DECL (type)) = 1;
-    TREE_READONLY (TYPE_CTABLE_DECL (type)) = 1;
+    //TREE_READONLY (TYPE_CTABLE_DECL (type)) = 1;
     TREE_CONSTANT (TYPE_CTABLE_DECL (type)) = 1;
     DECL_IGNORED_P (TYPE_CTABLE_DECL (type)) = 1;
     pushdecl (TYPE_CTABLE_DECL (type));  
@@ -2977,7 +2977,8 @@ emit_symbol_table (tree name, tree the_table,
   the_table = build_decl (input_location,
 			  VAR_DECL, name, the_array_type);
   TREE_STATIC (the_table) = 1;
-  TREE_READONLY (the_table) = 1;  
+  // Must be writeable by the Java linker.
+  TREE_READONLY (the_table) = 0;
   rest_of_decl_compilation (the_table, 1, 0);
 
   return the_table;
@@ -3023,7 +3024,7 @@ emit_catch_table (tree this_class)
   DECL_INITIAL (table) = 
     build_constructor (array_type, TYPE_CATCH_CLASSES (this_class));
   TREE_STATIC (table) = 1;
-  TREE_READONLY (table) = 1;  
+  //TREE_READONLY (table) = 1;  
   DECL_IGNORED_P (table) = 1;
   rest_of_decl_compilation (table, 1, 0);
   return table;
