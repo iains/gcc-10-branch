@@ -11334,7 +11334,7 @@ _LT_EOF
 	if $NM -V 2>&1 | $GREP 'GNU' > /dev/null; then
 	  export_symbols_cmds='$NM -Bpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B") || (\$ 2 == "W")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
 	else
-	  export_symbols_cmds='$NM -BCpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
+	  export_symbols_cmds='$NM -BCpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B") || (\$ 2 == "L")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
 	fi
 	aix_use_runtimelinking=no
 
@@ -15853,7 +15853,7 @@ $as_echo_n "checking whether the $compiler linker ($LD) supports shared librarie
     if $NM -V 2>&1 | $GREP 'GNU' > /dev/null; then
       export_symbols_cmds_CXX='$NM -Bpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B") || (\$ 2 == "W")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
     else
-      export_symbols_cmds_CXX='$NM -BCpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
+      export_symbols_cmds_CXX='$NM -BCpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B") || (\$ 2 == "L")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
     fi
     ;;
   pw32*)
@@ -18298,7 +18298,7 @@ _LT_EOF
 	if $NM -V 2>&1 | $GREP 'GNU' > /dev/null; then
 	  export_symbols_cmds_GCJ='$NM -Bpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B") || (\$ 2 == "W")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
 	else
-	  export_symbols_cmds_GCJ='$NM -BCpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
+	  export_symbols_cmds_GCJ='$NM -BCpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B") || (\$ 2 == "L")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
 	fi
 	aix_use_runtimelinking=no
 
@@ -21678,31 +21678,6 @@ fi
 
 
 
-          am_save_CPPFLAGS="$CPPFLAGS"
-
-  for element in $INCICONV; do
-    haveit=
-    for x in $CPPFLAGS; do
-
-  acl_save_prefix="$prefix"
-  prefix="$acl_final_prefix"
-  acl_save_exec_prefix="$exec_prefix"
-  exec_prefix="$acl_final_exec_prefix"
-  eval x=\"$x\"
-  exec_prefix="$acl_save_exec_prefix"
-  prefix="$acl_save_prefix"
-
-      if test "X$x" = "X$element"; then
-        haveit=yes
-        break
-      fi
-    done
-    if test -z "$haveit"; then
-      CPPFLAGS="${CPPFLAGS}${CPPFLAGS:+ }$element"
-    fi
-  done
-
-
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for iconv" >&5
 $as_echo_n "checking for iconv... " >&6; }
 if test "${am_cv_func_iconv+set}" = set; then :
@@ -21711,6 +21686,8 @@ else
 
     am_cv_func_iconv="no, consider installing GNU libiconv"
     am_cv_lib_iconv=no
+                    am_save_CPPFLAGS="$CPPFLAGS"
+    CPPFLAGS="$CPPFLAGS $INCICONV"
     if test x$gcc_no_link = xyes; then
   as_fn_error "Link tests are not allowed after GCC_NO_EXECUTABLES." "$LINENO" 5
 fi
@@ -21733,8 +21710,52 @@ if ac_fn_c_try_link "$LINENO"; then :
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
+    CPPFLAGS="$am_save_CPPFLAGS"
+
+    if test "$am_cv_func_iconv" != yes && test -d ../libiconv; then
+      for _libs in .libs _libs; do
+        am_save_CPPFLAGS="$CPPFLAGS"
+        am_save_LIBS="$LIBS"
+        CPPFLAGS="$CPPFLAGS -I../libiconv/include"
+        LIBS="$LIBS ../libiconv/lib/$_libs/libiconv.a"
+        if test x$gcc_no_link = xyes; then
+  as_fn_error "Link tests are not allowed after GCC_NO_EXECUTABLES." "$LINENO" 5
+fi
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdlib.h>
+#include <iconv.h>
+int
+main ()
+{
+iconv_t cd = iconv_open("","");
+           iconv(cd,NULL,NULL,NULL,NULL);
+           iconv_close(cd);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  INCICONV="-I../libiconv/include"
+          LIBICONV='${top_builddir}'/../libiconv/lib/$_libs/libiconv.a
+          LTLIBICONV='${top_builddir}'/../libiconv/lib/libiconv.la
+          am_cv_lib_iconv=yes
+          am_cv_func_iconv=yes
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+        CPPFLAGS="$am_save_CPPFLAGS"
+        LIBS="$am_save_LIBS"
+        if test "$am_cv_func_iconv" = "yes"; then
+          break
+        fi
+      done
+    fi
+
     if test "$am_cv_func_iconv" != yes; then
+      am_save_CPPFLAGS="$CPPFLAGS"
       am_save_LIBS="$LIBS"
+      CPPFLAGS="$LIBS $INCICONV"
       LIBS="$LIBS $LIBICONV"
       if test x$gcc_no_link = xyes; then
   as_fn_error "Link tests are not allowed after GCC_NO_EXECUTABLES." "$LINENO" 5
@@ -21759,6 +21780,7 @@ if ac_fn_c_try_link "$LINENO"; then :
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
+      CPPFLAGS="$am_save_CPPFLAGS"
       LIBS="$am_save_LIBS"
     fi
 
@@ -21771,12 +21793,34 @@ $as_echo "#define HAVE_ICONV 1" >>confdefs.h
 
   fi
   if test "$am_cv_lib_iconv" = yes; then
+
+  for element in $INCICONV; do
+    haveit=
+    for x in $CPPFLAGS; do
+
+  acl_save_prefix="$prefix"
+  prefix="$acl_final_prefix"
+  acl_save_exec_prefix="$exec_prefix"
+  exec_prefix="$acl_final_exec_prefix"
+  eval x=\"$x\"
+  exec_prefix="$acl_save_exec_prefix"
+  prefix="$acl_save_prefix"
+
+      if test "X$x" = "X$element"; then
+        haveit=yes
+        break
+      fi
+    done
+    if test -z "$haveit"; then
+      CPPFLAGS="${CPPFLAGS}${CPPFLAGS:+ }$element"
+    fi
+  done
+
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking how to link with libiconv" >&5
 $as_echo_n "checking how to link with libiconv... " >&6; }
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $LIBICONV" >&5
 $as_echo "$LIBICONV" >&6; }
   else
-            CPPFLAGS="$am_save_CPPFLAGS"
     LIBICONV=
     LTLIBICONV=
   fi
@@ -28275,7 +28319,7 @@ ac_abs_srcdir=$ac_abs_top_srcdir$ac_dir_suffix
       ac_sub_configure=$ac_srcdir/configure.gnu
     elif test -f "$ac_srcdir/configure"; then
       ac_sub_configure=$ac_srcdir/configure
-    elif test -f "$ac_srcdir/configure.ac"; then
+    elif test -f "$ac_srcdir/configure.in"; then
       # This should be Cygnus configure.
       ac_sub_configure=$ac_aux_dir/configure
     else
