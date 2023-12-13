@@ -368,8 +368,12 @@ make_class (void)
   tree type;
   type = make_node (RECORD_TYPE);
   /* Unfortunately we must create the binfo here, so that class
-     loading works.  */
-  TYPE_BINFO (type) = make_tree_binfo (0);
+     loading works.  This is a placeholder that will be overwritten
+     if/when we have the superclasses info.  */
+  tree binfo = make_tree_binfo (0);
+  BINFO_TYPE (binfo) = type;
+  BINFO_OFFSET (binfo) = size_zero_node;
+  TYPE_BINFO (type) = binfo;
   MAYBE_CREATE_TYPE_TYPE_LANG_SPECIFIC (type);
   TYPE_CATCH_CLASSES (type) = NULL;
   /* Push a dummy entry; we can't call make_catch_class_record here
@@ -524,7 +528,12 @@ set_super_info (int access_flags, tree this_class,
     total_supers++;
 
   if (total_supers)
-    TYPE_BINFO (this_class) = make_tree_binfo (total_supers);
+    {
+      tree binfo = make_tree_binfo (total_supers);
+      BINFO_TYPE (binfo) = this_class;
+      BINFO_OFFSET (binfo) = size_zero_node;
+      TYPE_BINFO (this_class) = binfo;
+    }
   TYPE_VFIELD (this_class) = TYPE_VFIELD (object_type_node);
   if (super_class)
     {
