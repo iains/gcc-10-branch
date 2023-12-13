@@ -569,7 +569,7 @@ expand_start_catch_block (tree decl)
 		    fold_build1_loc (input_location,
 				     NEGATE_EXPR, sizetype,
 				     TYPE_SIZE_UNIT (TREE_TYPE (exp))));
-      exp = cp_build_indirect_ref (exp, RO_NULL, tf_warning_or_error);
+      exp = cp_build_fold_indirect_ref (exp);
       initialize_handler_parm (decl, exp);
       return type;
     }

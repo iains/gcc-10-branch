@@ -3268,7 +3268,7 @@ build_new_1 (vec<tree, va_gc> **placement, tree type, tree nelts,
 	return error_mark_node;
 
       use_java_new = 1;
-      tree alloc_fn = get_global_binding (get_identifier (alloc_name));
+      alloc_fn = get_global_binding (get_identifier (alloc_name));
       if (!alloc_fn)
 	{
           if (complain & tf_error)

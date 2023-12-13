@@ -277,7 +277,6 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 	  break;
 
 	case OPT_g:
-	case OPT_gcoff:
 	case OPT_gdwarf_:
 	case OPT_ggdb:
 	case OPT_gstabs:

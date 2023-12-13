@@ -9772,8 +9772,7 @@ build_java_interface_fn_ref (tree fn, tree instance)
 
   /* Look up the pointer to the runtime java.lang.Class object for `instance'.
      This is the first entry in the vtable.  */
-  klass_ref = build_vtbl_ref (cp_build_indirect_ref (instance, RO_NULL, 
-                                                     tf_warning_or_error),
+  klass_ref = build_vtbl_ref (cp_build_fold_indirect_ref (instance),
 			      integer_zero_node);
 
   /* Get the java.lang.Class pointer for the interface being called.  */
