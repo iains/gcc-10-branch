@@ -686,13 +686,15 @@ extern void _Jv_RegisterBootstrapPackages ();
 					  loader.  */
 
 // These are used to find ABI versions we recognize.
-#define GCJ_CXX_ABI_VERSION (__GNUC__ * 100000)
+//#define GCJ_CXX_ABI_VERSION (__GNUC__ * 65536)
+// Last GCC released version
+#define GCJ_CXX_ABI_VERSION (6 * 100000) // 0x927C0
 
 // This is the old-style BC version ID used by GCJ 4.0.0.
-#define OLD_GCJ_40_BC_ABI_VERSION (4 * 10000 + 0 * 10 + 5)
+#define OLD_GCJ_40_BC_ABI_VERSION (4 * 10000 + 0 * 10 + 5) // 0x09c45
 
 // New style version IDs used by GCJ 4.0.1 and later.
-#define GCJ_40_BC_ABI_VERSION (4 * 100000 + 0 * 1000)
+#define GCJ_40_BC_ABI_VERSION (4 * 100000 + 0 * 1000) // 0x61A80
 
 void _Jv_CheckABIVersion (unsigned long value);
 

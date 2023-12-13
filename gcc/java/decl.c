@@ -535,7 +535,7 @@ parse_version (void)
       /* Implicit in this computation is the idea that we won't break the
 	 old-style binary ABI in a minor release (e.g., from 6.1.0 to
 	 6.2.0).  */
-      abi_version = 100000 * major;
+      abi_version = 100000 * 6/*major*/;
     }
   if (flag_bootstrap_classes)
     abi_version |= FLAG_BOOTSTRAP_LOADER;

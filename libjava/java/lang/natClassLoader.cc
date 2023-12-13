@@ -248,7 +248,7 @@ _Jv_CheckABIVersion (unsigned long value)
      return;
      
   // The 20 low-end bits are used for the version number.
-  unsigned long version = value & 0xfffff;
+  unsigned long version = value & 0xfffffUL;
 
   if (value & FLAG_BINARYCOMPAT_ABI)
     {
