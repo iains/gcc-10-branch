@@ -9756,12 +9756,18 @@ build_java_interface_fn_ref (tree fn, tree instance)
 
   if (!java_iface_lookup_fn)
     {
-      tree ftype = build_function_type_list (ptr_type_node,
-					     ptr_type_node, ptr_type_node,
-					     java_int_type_node, NULL_TREE);
-      java_iface_lookup_fn
-	= add_builtin_function ("_Jv_LookupInterfaceMethodIdx", ftype,
-				0, NOT_BUILT_IN, NULL, NULL_TREE);
+      tree name = get_identifier ("_Jv_LookupInterfaceMethodIdx");
+      java_iface_lookup_fn = get_global_binding (name);
+      if (!java_iface_lookup_fn)
+	{
+	  tree ftype = build_function_type_list (ptr_type_node,
+						 ptr_type_node, ptr_type_node,
+						 java_int_type_node, NULL_TREE);
+	  java_iface_lookup_fn =  push_library_fn (name, ftype, NULL_TREE, 0);
+	}
+//      java_iface_lookup_fn
+//	= add_builtin_function ("_Jv_LookupInterfaceMethodIdx", ftype,
+//				0, NOT_BUILT_IN, NULL, NULL_TREE);
     }
 
   /* Look up the pointer to the runtime java.lang.Class object for `instance'.
