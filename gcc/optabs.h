@@ -23,6 +23,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "optabs-query.h"
 #include "optabs-libfuncs.h"
 #include "vec-perm-indices.h"
+#include "profile-count.h"
 
 /* Generate code for a widening multiply.  */
 extern rtx expand_widening_mult (machine_mode, rtx, rtx, rtx, int, optab);
@@ -253,8 +254,14 @@ extern rtx prepare_operand (enum insn_code, rtx, int, machine_mode,
 			    machine_mode, int);
 /* Emit a pair of rtl insns to compare two rtx's and to jump
    to a label if the comparison is true.  */
+
 extern void emit_cmp_and_jump_insns (rtx, rtx, enum rtx_code, rtx,
 				     machine_mode, int, rtx,
+				     profile_probability prob
+					= profile_probability::uninitialized ());
+
+extern void emit_cmp_and_jump_insns (rtx, rtx, enum rtx_code, rtx,
+				     machine_mode, int, tree, rtx,
 				     profile_probability prob
 					= profile_probability::uninitialized ());
 
