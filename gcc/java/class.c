@@ -2476,8 +2476,6 @@ layout_class (tree this_class)
 	push_super_field (this_class, maybe_super_class);
     }
 
-  layout_type (this_class);
-
   /* Also recursively load/layout any superinterfaces.  */
   if (TYPE_BINFO (this_class))
     {
@@ -2498,9 +2496,7 @@ layout_class (tree this_class)
 	}
     }
 
-  /* Convert the size back to an SI integer value.  */
-  TYPE_SIZE_UNIT (this_class) =
-    fold (convert (int_type_node, TYPE_SIZE_UNIT (this_class)));
+  layout_type (this_class);
 
   CLASS_BEING_LAIDOUT (this_class) = 0;
   class_list = TREE_CHAIN (class_list);
