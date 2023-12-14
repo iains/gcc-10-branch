@@ -141,4 +141,5 @@ JNIEXPORT jint JNICALL Java_getstacktrace_do_1getstacktrace_1tests
           printStackTrace (frames, frame_cnt);
         }
     }
+  return 0;
 }
