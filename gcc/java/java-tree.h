@@ -1340,6 +1340,11 @@ extern tree *type_map;
 /* FIXME this use of TREE_TYPE conflicts with something or other. */
 #define TYPE_ARRAY_ELEMENT(ATYPE) TREE_TYPE (ATYPE)
 
+/* FIXME: Replace legacy uses of TYPE_METHODS in the Java frontend and then
+   remove this definition. */
+#define TYPE_METHODS(NODE)        \
+  (RECORD_OR_UNION_CHECK (NODE)->type_non_common.lang_1)
+
 /* True if class TYPE has been loaded (i.e. parsed plus laid out).
    (The check for CLASS_PARSED_P is needed because of Object and Class.) */
 #define CLASS_LOADED_P(TYPE) (TYPE_SIZE (TYPE) != NULL_TREE \
