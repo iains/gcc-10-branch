@@ -55,7 +55,7 @@
 extern "C" {
 #include "private/dbg_mlc.h"
   int GC_n_set_marks(hdr* hhdr);
-  ptr_t GC_clear_stack(ptr_t p);
+  //ptr_t GC_clear_stack(ptr_t p);
   extern int GC_gcj_kind;
   extern int GC_gcj_debug_kind;
 }
