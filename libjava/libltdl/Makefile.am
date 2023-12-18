@@ -4,7 +4,7 @@ AUTOMAKE_OPTIONS = no-dependencies foreign no-dist
 
 ACLOCAL_AMFLAGS = -I ../.. -I ../../config
 
-INCLUDES = $(GCINCS)
+AM_CPPFLAGS = $(GCINCS)
 
 if INSTALL_LTDL
 include_HEADERS = ltdl.h

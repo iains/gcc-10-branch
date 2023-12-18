@@ -9,13 +9,14 @@ gcc_version := $(shell cat $(top_srcdir)/../gcc/BASE-VER)
 target_noncanonical = @target_noncanonical@
 
 # Setup the testing framework, if you have one
-EXPECT = `if [ -f $(top_builddir)/../expect/expect ] ; then \
-            echo $(top_builddir)/../expect/expect ; \
-          else echo expect ; fi`
+#EXPECT = `if [ -f $(top_builddir)/../expect/expect ] ; then \
+#            echo $(top_builddir)/../expect/expect ; \
+#          else echo expect ; fi`
+EXPECT = expect
 
-RUNTEST = "`if [ -f $(top_srcdir)/../dejagnu/runtest ] ; then \
-	       echo $(top_srcdir)/../dejagnu/runtest ; \
-	    else echo runtest; fi` $(AM_RUNTESTFLAGS)"
+#RUNTEST = "`if [ -f $(top_srcdir)/../dejagnu/runtest ] ; then \
+#	       echo $(top_srcdir)/../dejagnu/runtest ; \
+#	    else echo runtest; fi` $(AM_RUNTESTFLAGS)"
 
 ## Tell dejagnu whether the interpreter is enabled.
 AM_RUNTESTFLAGS = INTERPRETER=$(INTERPRETER)

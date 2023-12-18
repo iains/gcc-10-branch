@@ -16,9 +16,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301  USA
 
-
-AC_PREREQ(2.64)
-
 dnl Disable libtool 1.5 support for languages we don't use
 define([AC_LIBTOOL_LANG_CXX_CONFIG], [:])dnl
 define([AC_LIBTOOL_LANG_F77_CONFIG], [:])dnl
@@ -27,7 +24,7 @@ define([AC_LIBTOOL_LANG_GCJ_CONFIG], [:])dnl
 ## ------------------------ ##
 ## Autoconf initialisation. ##
 ## ------------------------ ##
-AC_INIT([libltdl], [1.2], [bug-libtool@gnu.org])
+AC_INIT([libltdl],[version-unused],[bug-libtool@gnu.org],[libltdl])
 AC_CONFIG_SRCDIR([ltdl.c])
 
 ## GCJ LOCAL: gcc tree uses maintainer mode.
@@ -57,7 +54,7 @@ fi
 ## ------------------------ ##
 ## Automake Initialisation. ##
 ## ------------------------ ##
-AM_INIT_AUTOMAKE(AC_PACKAGE_TARNAME, AC_PACKAGE_VERSION, -)
+AM_INIT_AUTOMAKE([1.15.1 foreign no-dependencies no-dist])
 AM_CONFIG_HEADER([config.h:config-h.in])
 
 
@@ -74,6 +71,7 @@ AC_C_INLINE
 ## ----------------------- ##
 AC_LIBTOOL_WIN32_DLL
 AC_PROG_LIBTOOL
+#LT_INIT
 AC_SUBST([LIBTOOL_DEPS])
 
 AC_LIB_LTDL

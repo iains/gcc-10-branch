@@ -1,10 +1,9 @@
 dnl # Process this with autoconf to create configure
 
-sinclude(../config/sjlj.m4)
-
-AC_PREREQ(2.64)
+#sinclude(../config/sjlj.m4)
+#
 # Still use "libjava" here to placate dejagnu.
-AC_INIT([libjava], [version-unused],, [libjava])
+AC_INIT([libjava],[version-unused],[],[libjava])
 
 AC_CONFIG_SRCDIR(java/lang/System.java)
 
@@ -21,7 +20,7 @@ AC_ARG_WITH(target-subdir,
 # Find the rest of the source tree framework.
 AM_ENABLE_MULTILIB(, ..)
 
-AC_CANONICAL_SYSTEM
+AC_CANONICAL_TARGET
 _GCC_TOPLEV_NONCANONICAL_BUILD
 _GCC_TOPLEV_NONCANONICAL_TARGET
 
@@ -144,6 +143,8 @@ AC_ARG_ENABLE(java-maintainer-mode,
 	[allow rebuilding of .class and .h files]))
 AM_CONDITIONAL(JAVA_MAINTAINER_MODE, test "$enable_java_maintainer_mode" = yes)
 
+AM_INIT_AUTOMAKE([1.15.1 foreign no-dist])
+
 # It may not be safe to run linking tests in AC_PROG_CC/AC_PROG_CXX.
 GCC_NO_EXECUTABLES
 
@@ -156,7 +157,6 @@ AC_PROG_CC
 AC_PROG_CXX
 CXXFLAGS="$save_CXXFLAGS"
 
-AM_INIT_AUTOMAKE([no-dist 1.9.0])
 
 AC_CHECK_TOOL(AS, as)
 AC_CHECK_TOOL(LD, ld)
@@ -551,7 +551,10 @@ dnl --enable-regen-headers?
 # Only use libltdl for non-newlib builds.
 if test "x${with_newlib}" = "x" || test "x${with_newlib}" = "xno"; then
    AC_LIBLTDL_CONVENIENCE
-   AC_LIBTOOL_DLOPEN
+   _LT_SET_OPTION([LT_INIT],[dlopen])
+AC_DIAGNOSE([obsolete],[AC_LIBTOOL_DLOPEN: Remove this warning and the call to _LT_SET_OPTION when you
+put the `dlopen' option into LT_INIT's first parameter.])
+
    DIRLTDL=libltdl
    AC_DEFINE(USE_LTDL, 1, [Define if libltdl is in use.])
    # Sigh.  Libtool's macro doesn't do the right thing.
@@ -563,7 +566,7 @@ fi
 AC_SUBST(INCLTDL)
 AC_SUBST(LIBLTDL)
 AC_SUBST(DIRLTDL)
-AC_PROG_LIBTOOL
+LT_INIT
 ACX_LT_HOST_FLAGS
 AM_PROG_GCJ
 AM_PROG_CC_C_O
@@ -918,7 +921,7 @@ esac
 AC_CACHE_CHECK([for --no-merge-exidx-entries], [libgcj_cv_exidx],
   [saved_ldflags="$LDFLAGS"
    LDFLAGS="${LDFLAGS} -Wl,--no-merge-exidx-entries"
-   AC_LINK_IFELSE([int main(void){ return 0;} ],
+   AC_LINK_IFELSE([AC_LANG_SOURCE([int main(void){ return 0;} ])],
 		      [eval "libgcj_cv_exidx=yes"],
 		      [eval "libgcj_cv_exidx=no"])
    LDFLAGS="${saved_ldflags}"]
@@ -1215,12 +1218,12 @@ else
 	AC_CACHE_CHECK([whether gethostbyname_r declaration requires -D_REENTRANT],
 	[libjava_cv_gethostbyname_r_needs_reentrant],
 	[ AC_LANG_PUSH(C++)
-	  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <netdb.h>]],
+	  AC_COMPILE_IFELSE([AC_LANG_SOURCE([[#include <netdb.h>]],
 	    [[gethostbyname_r("", 0, 0);]])],
 	    [libjava_cv_gethostbyname_r_needs_reentrant=no], [dnl
 		CPPFLAGS_SAVE="$CPPFLAGS"
 		CPPFLAGS="$CPPFLAGS -D_REENTRANT"
-		AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <netdb.h>]], [[gethostbyname_r("", 0, 0);]])],
+		AC_COMPILE_IFELSE([AC_LANG_SOURCE([[#include <netdb.h>]], [[gethostbyname_r("", 0, 0);]])],
 		    [libjava_cv_gethostbyname_r_needs_reentrant=yes],
 		    [libjava_cv_gethostbyname_r_needs_reentrant=fail])
 		CPPFLAGS="$CPPFLAGS_SAVE"
@@ -1234,7 +1237,8 @@ else
      esac
 
      AC_CACHE_CHECK([for struct hostent_data],
-	[libjava_cv_struct_hostent_data], [dnl
+	[libjava_cv_struct_hostent_data], [
+  AC_LANG_PUSH(C++)
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #if GETHOSTBYNAME_R_NEEDS_REENTRANT && !defined(_REENTRANT)
 # define _REENTRANT 1
@@ -1246,6 +1250,7 @@ else
        AC_DEFINE(HAVE_STRUCT_HOSTENT_DATA, 1,
          [Define if struct hostent_data is defined in netdb.h])
      fi
+   AC_LANG_POP(C++)
    ])
 
    # FIXME: libjava source code expects to find a prototype for
@@ -1308,11 +1313,11 @@ else
 
       # We can save a little space at runtime if the mutex has m_count
       # or __m_count.  This is a nice hack for Linux.
-      AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <pthread.h>]], [[
+      AC_COMPILE_IFELSE([AC_LANG_SOURCE([[#include <pthread.h>]], [[
           extern pthread_mutex_t *mutex; int q = mutex->m_count;
         ]])], AC_DEFINE(PTHREAD_MUTEX_HAVE_M_COUNT, 1,
              [Define if pthread_mutex_t has m_count member.]), [
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <pthread.h>]], [[
+	AC_COMPILE_IFELSE([AC_LANG_SOURCE([[#include <pthread.h>]], [[
 	    extern pthread_mutex_t *mutex; int q = mutex->__m_count;
 	  ]])], AC_DEFINE(PTHREAD_MUTEX_HAVE___M_COUNT, 1,
             [Define if pthread_mutex_t has __m_count member.]))])
@@ -1464,7 +1469,7 @@ if test ! -f gnu/classpath/Configuration.java; then
   fi
 fi
 
-LT_AC_PROG_GCJ
+LT_PROG_GCJ
 
 # Now remove it.
 rm -f gnu/classpath/Configuration.java
@@ -1586,12 +1591,12 @@ AC_CHECK_TYPE([magic_t], [
 #endif])
 
 AC_MSG_CHECKING([for in_addr_t])
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sys/types.h>
-#if STDC_HEADERS
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([[#include <sys/types.h>
+#ifdef STDC_HEADERS
 #include <stdlib.h>
 #include <stddef.h>
 #endif
-#if HAVE_NETINET_IN_H
+#ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif]], [[in_addr_t foo;]])],
   [AC_DEFINE(HAVE_IN_ADDR_T, 1,
@@ -1600,28 +1605,28 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sys/types.h>
   [AC_MSG_RESULT(no)])
 
 AC_MSG_CHECKING([whether struct ip_mreq is in netinet/in.h])
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <netinet/in.h>]], [[struct ip_mreq mreq;]])],
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([[#include <netinet/in.h>]], [[struct ip_mreq mreq;]])],
   [AC_DEFINE(HAVE_STRUCT_IP_MREQ, 1,
      [Define if struct ip_mreq is defined in netinet/in.h.])
    AC_MSG_RESULT(yes)],
   [AC_MSG_RESULT(no)])
 
 AC_MSG_CHECKING([whether struct ipv6_mreq is in netinet/in.h])
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <netinet/in.h>]], [[struct ipv6_mreq mreq6;]])],
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([[#include <netinet/in.h>]], [[struct ipv6_mreq mreq6;]])],
   [AC_DEFINE(HAVE_STRUCT_IPV6_MREQ, 1,
      [Define if struct ipv6_mreq is defined in netinet/in.h.])
    AC_MSG_RESULT(yes)],
   [AC_MSG_RESULT(no)])
 
 AC_MSG_CHECKING([whether struct sockaddr_in6 is in netinet/in.h])
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <netinet/in.h>]], [[struct sockaddr_in6 addr6;]])],
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([[#include <netinet/in.h>]], [[struct sockaddr_in6 addr6;]])],
   [AC_DEFINE(HAVE_INET6, 1,
      [Define if inet6 structures are defined in netinet/in.h.])
    AC_MSG_RESULT(yes)],
   [AC_MSG_RESULT(no)])
 
 AC_MSG_CHECKING([for socklen_t in sys/socket.h])
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#define _POSIX_PII_SOCKET
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([[#define _POSIX_PII_SOCKET
 #include <sys/types.h>
 #include <sys/socket.h>]], [[socklen_t x = 5;]])],
   [AC_DEFINE(HAVE_SOCKLEN_T, 1, [Define it socklen_t typedef is in sys/socket.h.])
@@ -1629,7 +1634,7 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#define _POSIX_PII_SOCKET
   [AC_MSG_RESULT(no)])
 
 AC_MSG_CHECKING([for tm_gmtoff in struct tm])
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <time.h>]], [[struct tm tim; tim.tm_gmtoff = 0;]])],
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([[#include <time.h>]], [[struct tm tim; tim.tm_gmtoff = 0;]])],
   [AC_DEFINE(STRUCT_TM_HAS_GMTOFF, 1, [Define if struct tm has tm_gmtoff field.])
    AC_MSG_RESULT(yes)],
   [AC_MSG_RESULT(no)
@@ -1638,13 +1643,13 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <time.h>]], [[struct tm tim; tim.t
    dnl when cross-compiling.  So instead we make an assumption that
    dnl the header file will mention timezone if it exists.
    dnl Don't find the win32 function timezone
-   AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <time.h>]], [[void i(){long z2 = 2*timezone;}]])],
+   AC_COMPILE_IFELSE([AC_LANG_SOURCE([[#include <time.h>]], [[void i(){long z2 = 2*timezone;}]])],
      [AC_DEFINE(HAVE_TIMEZONE, 1, [Define if global 'timezone' exists.])
       AC_MSG_RESULT(yes)],
      [AC_MSG_RESULT(no)
        AC_MSG_CHECKING([for global _timezone variable])
        dnl FIXME: As above, don't want link check
-       AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <time.h>]], [[long z2 = _timezone;]])],
+       AC_COMPILE_IFELSE([AC_LANG_SOURCE([[#include <time.h>]], [[long z2 = _timezone;]])],
          [AC_DEFINE(HAVE_UNDERSCORE_TIMEZONE, 1,
             [Define if your platform has the global _timezone variable.])
           AC_MSG_RESULT(yes)],
@@ -1763,9 +1768,7 @@ AC_CACHE_CHECK([whether ld supports anonymous version scripts],
      CFLAGS="$CFLAGS -fPIC";
      LDFLAGS="$LDFLAGS -shared -Wl,--version-script,conftest.map"
      echo '{ global: globalsymb*; local: *; };' > conftest.map
-     AC_TRY_LINK(void globalsymbol (void) {} void localsymbol (void) {},,
-	         [libjava_cv_anon_version_script=gnu],
-		 [libjava_cv_anon_version_script=no])
+     AC_LINK_IFELSE([AC_LANG_PROGRAM([[void globalsymbol (void) {} void localsymbol (void) {}]], [[]])],[libjava_cv_anon_version_script=gnu],[libjava_cv_anon_version_script=no])
      if test x$libjava_cv_anon_version_script = xno; then
        case "$target_os" in
          solaris2*)
@@ -1773,8 +1776,7 @@ AC_CACHE_CHECK([whether ld supports anonymous version scripts],
            LDFLAGS="$LDFLAGS -shared -Wl,-M,conftest.map"
            # Sun ld doesn't understand wildcards here.
            echo '{ global: globalsymbol; local: *; };' > conftest.map
-           AC_TRY_LINK(void globalsymbol (void) {} void localsymbol (void) {},,
-	 	       [libjava_cv_anon_version_script=sun], [])
+           AC_LINK_IFELSE([AC_LANG_PROGRAM([[void globalsymbol (void) {} void localsymbol (void) {}]], [[]])],[libjava_cv_anon_version_script=sun],[])
            ;;
        esac
      fi
