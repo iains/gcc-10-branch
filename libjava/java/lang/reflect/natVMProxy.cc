@@ -62,6 +62,9 @@ details.  */
 #include <java/lang/Boolean.h>
 #include <java/lang/Character.h>
 
+#ifndef FFI_TYPE
+#define FFI_TYPE unsigned short
+#endif
 
 using namespace java::lang::reflect;
 using namespace java::lang;
