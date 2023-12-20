@@ -784,22 +784,25 @@ build_throw (location_t loc, tree exp)
 
   if (exp && decl_is_java_type (TREE_TYPE (exp), 1))
     {
-      tree fn = get_identifier ("_Jv_Throw");
-      fn = get_global_binding (fn);
+      tree tname = get_identifier ("_Jv_Throw");
+      tree fn = get_global_binding (tname);
       if (!fn)
 	{
 	  /* Declare void _Jv_Throw (void *).  */
-	  tree tmp;
-	  tmp = build_function_type_list (ptr_type_node,
-					  ptr_type_node, NULL_TREE);
-	  fn = push_throw_library_fn (fn, tmp);
+	  tree tmp = build_function_type_list (void_type_node, ptr_type_node,
+					       NULL_TREE);
+	  fn = push_throw_library_fn (tname, tmp);
 	}
-      else if (really_overloaded_fn (fn))
+      else if (is_overloaded_fn (fn))
 	{
-	  error ("%qD should never be overloaded", fn);
-	  return error_mark_node;
+	  if (really_overloaded_fn (fn))
+	    {
+	      error ("%qD should never be overloaded", fn);
+	      return error_mark_node;
+	    }
+	  else
+	    fn = get_first_fn (fn);
 	}
-      //fn = OVL_CURRENT (fn);
       exp = cp_build_function_call_nary (fn, tf_warning_or_error,
 					 exp, NULL_TREE);
     }
