@@ -4186,7 +4186,7 @@ type_has_nontrivial_copy_init (const_tree type)
 {
   tree t = strip_array_types (CONST_CAST_TREE (type));
 
-  if (CLASS_TYPE_P (t))
+  if (CLASS_TYPE_P (t) && !TYPE_FOR_JAVA (t))
     {
       gcc_assert (COMPLETE_TYPE_P (t));
 
