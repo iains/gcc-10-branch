@@ -19,8 +19,10 @@ public:
 };
 int
 _Jv_FindClassFromSignature ( )
+{
   try 
     {
     }
-  catch (java::lang::Throwable *ncdfe) {} 
-
+  catch (java::lang::Throwable *ncdfe) {}
+  return 0;
+}
