@@ -54,7 +54,17 @@ details.  */
 using gnu::java::nio::channels::FileChannelImpl;
 using namespace java::lang;
 
+#ifndef HAVE_ENVIRON_DECL
+#  ifdef __APPLE__
+#     include <crt_externs.h>
+#     define environ (*_NSGetEnviron ())
+#  else
+#    ifndef environ
 extern char **environ;
+#    endif
+#  endif
+#  define HAVE_ENVIRON_DECL
+#endif
 
 static char *
 new_string (jstring string)
