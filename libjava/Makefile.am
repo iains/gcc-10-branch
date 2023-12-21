@@ -355,6 +355,7 @@ WARNINGS = -Wextra -Wall
 ## -D_FILE_OFFSET_BITS=64 to enable > 2GB file support.
 AM_CXXFLAGS = \
 	-fno-rtti \
+	-std=c++98 \
 	-fnon-call-exceptions \
 	$(THREADCXXFLAGS) \
 	-fdollars-in-identifiers \
@@ -493,7 +494,7 @@ xlib_nat_files = $(xlib_nat_source_files:.cc=.lo)
 ## The mysterious backslash in the grep pattern is consumed by make.
 libgcj_la_LDFLAGS = -rpath $(toolexeclibdir) $(THREADLDFLAGS) $(extra_ldflags) $(THREADLIBS) \
 	$(LIBLTDL) $(SYS_ZLIBS) $(LIBJAVA_LDFLAGS_NOUNDEF) \
-	-version-info `grep -v '^\#' $(srcdir)/libtool-version` \
+	-version-info `grep -v '^\#' $(srcdir)/libtool-version` $(LIBICONV) \
 	$(LIBGCJ_LD_SYMBOLIC_FUNCTIONS) $(LIBGCJ_LD_EXPORT_ALL)
 libgcj_la_LIBADD = \
 	classpath/native/fdlibm/libfdlibm.la \
@@ -550,7 +551,7 @@ libgcj_tools_la_GCJFLAGS = $(AM_GCJFLAGS) -findirect-dispatch \
 libgcj_tools_la_LDFLAGS = -rpath $(toolexeclibdir) \
  -version-info `grep -v '^\#' $(srcdir)/libtool-version` \
  $(LIBGCJ_LD_SYMBOLIC_FUNCTIONS) $(LIBJAVA_LDFLAGS_NOUNDEF) \
- $(LIBJAVA_LDFLAGS_LIBMATH)
+ $(LIBJAVA_LDFLAGS_LIBMATH) $(LIBICONV)
 
 libgcj_tools_la_LIBADD = libgcj.la
 libgcj_tools_la_DEPENDENCIES = libgcj.la libgcj.spec \

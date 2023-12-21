@@ -1,7 +1,5 @@
 dnl # Process this with autoconf to create configure
 
-#sinclude(../config/sjlj.m4)
-#
 # Still use "libjava" here to placate dejagnu.
 AC_INIT([libjava],[version-unused],[],[libjava])
 
@@ -206,7 +204,7 @@ AC_EXEEXT
 # and a number of others; see the list at the start of the file.
 
 libgcj_cflags=
-libgcj_cxxflags=
+libgcj_cxxflags=-std=c++98
 libgcj_javaflags=
 libgcj_sublib_ltflags=
 libgcj_sublib_core_extra_deps=
