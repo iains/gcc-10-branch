@@ -1534,7 +1534,7 @@ Optional Features:
   --enable-liboffloadmic=ARG
                           build liboffloadmic [ARG={no,host,target}]
   --enable-static-libjava[=ARG]
-                          build static libjava [default=no]
+                          build static libjava [default=yes]
   --enable-bootstrap      enable bootstrapping [yes if native build]
   --disable-isl-version-check
                           disable check for isl version
@@ -3236,7 +3236,7 @@ esac
 if test "${enable_static_libjava+set}" = set; then :
   enableval=$enable_static_libjava; ENABLE_STATIC_LIBJAVA=$enableval
 else
-  ENABLE_STATIC_LIBJAVA=no
+  ENABLE_STATIC_LIBJAVA=yes
 fi
 
 enable_static_libjava=

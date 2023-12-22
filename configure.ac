@@ -529,9 +529,9 @@ esac
 
 AC_ARG_ENABLE(static-libjava,
 [AS_HELP_STRING([[--enable-static-libjava[=ARG]]],
-		[build static libjava @<:@default=no@:>@])],
+		[build static libjava @<:@default=yes@:>@])],
 ENABLE_STATIC_LIBJAVA=$enableval,
-ENABLE_STATIC_LIBJAVA=no)
+ENABLE_STATIC_LIBJAVA=yes)
 enable_static_libjava=
 if test "${ENABLE_STATIC_LIBJAVA}" = "yes" ; then
   enable_static_libjava=yes
