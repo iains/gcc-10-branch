@@ -3381,6 +3381,9 @@ static-libgfortran
 Driver
 ; Documented for Fortran, but always accepted by driver.
 
+static-libjava
+Driver
+
 static-libstdc++
 Driver
 

@@ -439,6 +439,8 @@ extern GTY(()) int darwin_ms_struct;
    %{static|static-libgcc|static-libgfortran:%:replace-outfile(-lgfortran libgfortran.a%s)}\
    %{static|static-libgcc|static-libstdc++|static-libgfortran:%:replace-outfile(-lgomp libgomp.a%s)}\
    %{static|static-libgcc|static-libstdc++:%:replace-outfile(-lstdc++ libstdc++.a%s)}\
+   %{static|static-libjava:%:replace-outfile(-lgcj libgcj.a%s)}\
+   %{static|static-libjava:%:replace-outfile(-lgij libgij.a%s)}\
    %{force_cpusubtype_ALL:-arch %(darwin_arch)} \
    %{!force_cpusubtype_ALL:-arch %(darwin_subarch)} "\
    LINK_SYSROOT_SPEC \

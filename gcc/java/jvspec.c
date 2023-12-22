@@ -34,18 +34,40 @@ The Free Software Foundation is independent of Sun Microsystems, Inc.  */
 /* Name of spec file.  */
 #define SPEC_FILE "libgcj.spec"
 
+/* Skip this option.  */
+#define SKIPOPT		(1<<0)
 /* This bit is set if we saw a `-xfoo' language specification.  */
 #define LANGSPEC	(1<<1)
 /* True if this arg is a .java input file name. */
-#define JAVA_FILE_ARG	(1<<3)
+#define JAVA_FILE_ARG	(1<<2)
 /* True if this arg is a .class input file name. */
-#define CLASS_FILE_ARG	(1<<4)
+#define CLASS_FILE_ARG	(1<<3)
 /* True if this arg is a .zip or .jar input file name. */
-#define ZIP_FILE_ARG	(1<<5)
+#define ZIP_FILE_ARG	(1<<4)
 /* True if this arg is @FILE - where FILE contains a list of filenames. */
-#define INDIRECT_FILE_ARG (1<<6)
+#define INDIRECT_FILE_ARG (1<<5)
 /* True if this arg is a resource file.  */
-#define RESOURCE_FILE_ARG (1<<7)
+#define RESOURCE_FILE_ARG (1<<6)
+/* This bit is set if they did `-lstdc++'.  */
+#define WITHLIBCXX	(1<<7)
+
+#ifndef LIBSTDCXX
+#define LIBSTDCXX "stdc++"
+#endif
+#ifndef LIBSTDCXX_PROFILE
+#define LIBSTDCXX_PROFILE LIBSTDCXX
+#endif
+
+/* What do with libgcj.  */
+enum libgcj_action
+{
+  /* libgcj should not be linked in.  */
+  GCJ_NOLINK = -1,
+  /* libgcj should be linked in if it is needed.  */
+  GCJ_DEFAULT = 0,
+  /* libgcj is needed and should be linked statically.  */
+  GCJ_STATIC,
+};
 
 static char *find_spec_file (const char *);
 static int verify_class_name (const char *);
@@ -54,7 +76,7 @@ static const char *main_class_name = NULL;
 int lang_specific_extra_outfiles = 0;
 
 /* True if we should add -shared-libgcc to the command-line.  */
-int shared_libgcc = 1;
+int shared_libgcc = 0;
 
 static const char jvgenmain_spec[] =
   "jvgenmain %{findirect-dispatch} %{D*} %b %m.i |\n\
@@ -136,6 +158,8 @@ verify_class_name (const char *name)
   return 1;
 }
 
+static libgcj_action gcj_library = GCJ_DEFAULT;
+
 void
 lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 		      unsigned int *in_decoded_options_count,
@@ -144,10 +168,11 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
   unsigned int i, j;
 
   int saw_save_temps = 0;
+  bool saw_static_libcxx = false;
 
   /* This will be 0 if we encounter a situation where we should not
      link in libgcj.  */
-  int library = 1;
+ // int library = 1;
 
   /* This will be 1 if multiple input files (.class and/or .java)
      should be passed to a single jc1 invocation. */
@@ -230,7 +255,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 	{
 	case OPT_nostdlib:
 	case OPT_nodefaultlibs:
-	  library = 0;
+	  gcj_library = GCJ_NOLINK;
 	  break;
 
 	case OPT_fmain_:
@@ -247,7 +272,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 	    {
 	      /* If they only gave us `-v', don't try to link
 		 in libgcj.  */ 
-	      library = 0;
+	      gcj_library = GCJ_NOLINK;
 	    }
 	  break;
 
@@ -258,18 +283,18 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 	case OPT_C:
 	  saw_C = 1;
 	  want_spec_file = 0;
-	  if (library != 0)
+	  if (gcj_library != GCJ_NOLINK)
 	    added -= 2;
-	  library = 0;
+	  gcj_library = GCJ_NOLINK;
 	  will_link = 0;
 	  break;
 
 	case OPT_fcompile_resource_:
 	  saw_resource = 1;
 	  want_spec_file = 0;
-	  if (library != 0)
+	  if (gcj_library != GCJ_NOLINK)
 	    --added;
-	  library = 0;
+	  gcj_library = GCJ_NOLINK;
 	  will_link = 0;
 	  break;
 
@@ -301,7 +326,8 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 	case OPT_fclasspath_:
 	case OPT_fbootclasspath_:
 	case OPT_extdirs:
-	  added -= 1;
+	  if (gcj_library != GCJ_NOLINK)
+	    --added;
 	  break;
 
 	case OPT_c:
@@ -311,15 +337,16 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 	case OPT_MM:
 	  /* Don't specify libraries if we won't link, since that would
 	     cause a warning.  */
-	  library = 0;
-	  added -= 2;
+	  if (gcj_library != GCJ_NOLINK)
+	    added -= 2;
+	  gcj_library = GCJ_NOLINK;
 
 	  /* Remember this so we can confirm -fmain option.  */
 	  will_link = 0;
 	  break;
 
 	case OPT_fsyntax_only:
-	  library = 0;
+	  gcj_library = GCJ_NOLINK;
 	  will_link = 0;
 	  continue;
 
@@ -330,6 +357,29 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
 	case OPT_static_libgcc:
 	case OPT_static:
 	  shared_libgcc = 0;
+	  break;
+
+	case OPT_static_libstdc__:
+	  saw_static_libcxx = true;
+//#ifdef HAVE_LD_STATIC_DYNAMIC
+//	  /* Remove -static-libstdc++ from the command only if target supports
+//	     LD_STATIC_DYNAMIC.  When not supported, it is left in so that a
+//	     back-end target can use outfile substitution.  */
+//	  args[i] |= SKIPOPT;
+//	  added += 2;
+//#endif
+	  break;
+
+	case OPT_static_libjava:
+	  if (gcj_library != GCJ_NOLINK)
+	    gcj_library = GCJ_STATIC;
+//#ifdef HAVE_LD_STATIC_DYNAMIC
+//	  /* Remove -static-libphobos from the command only if target supports
+//	     LD_STATIC_DYNAMIC.  When not supported, it is left in so that a
+//	     back-end target can use outfile substitution.  */
+//	  args[i] |= SKIPOPT;
+//	  added += 2;
+//#endif
 	  break;
 
 	case OPT_findirect_dispatch:
@@ -463,7 +513,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
   if (java_files_count > 0)
     ++num_args;
 
-  num_args += shared_libgcc;
+  num_args += 1; //shared_libgcc;
 
   num_args += link_for_bc_abi;
 
