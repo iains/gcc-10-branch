@@ -48,7 +48,8 @@ The Free Software Foundation is independent of Sun Microsystems, Inc.  */
       %{.java|fsaw-java-file:%U.jar -fsource-filename=%i %<ffilelist-file} \
       %{.class|.zip|.jar|ffilelist-file|fcompile-resource*:%i}		\
       %(jc1) %(cc1_options) %{I*} %{!findirect-dispatch:-faux-classpath %U.zip} \
-      %{MD:-MD_} %{MMD:-MMD_} %{M} %{MM} %{MA} %{MT*} %{MF*}\
+      %{MD:-MD_} %{MMD:-MMD_} %{M} %{MM} %{MA} %{MT*} %{MF*} \
+      %{fcompile-resource*:-g0} \
       %(invoke_as)}",
       0, 0, 0},
 
